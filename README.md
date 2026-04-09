@@ -1,6 +1,6 @@
 # Bluebird Browser
 
-![Browser Screenshot](images/coverImg.png) <!-- Replace 'placeholder.png' with your actual image file -->
+![Browser Screenshot](images/coverImg.png)
 
 Bluebird Browser is a lightweight, privacy-focused web browser designed for speed and simplicity. Built with modern web technologies, it offers features like ad-blocking, tab management, and customizable themes to enhance your browsing experience. Perfect for developers and everyday users seeking an alternative to mainstream browsers.
 
@@ -35,4 +35,8 @@ We welcome contributions! Please fork the repo and submit a pull request.
 
 ## License
 
+<<<<<<< HEAD
 This project is not currently licensed.
+=======
+This project is not currently licensed.
+>>>>>>> a49d96dd6f751b1131e49ea6a6100bbb40fe5ff2
