@@ -35,8 +35,4 @@ We welcome contributions! Please fork the repo and submit a pull request.
 
 ## License
 
-<<<<<<< HEAD
 This project is not currently licensed.
-=======
-This project is not currently licensed.
->>>>>>> a49d96dd6f751b1131e49ea6a6100bbb40fe5ff2
