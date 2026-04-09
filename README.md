@@ -20,7 +20,7 @@ Bluebird Browser is a lightweight, privacy-focused web browser designed for spee
 
 ## Installation
 
-1. Clone the repository: `git clone https://github.com/yourusername/bluebird_browser.git`
+1. Clone the repository: `git clone https://github.com/coder230-dev/bluebird_browser.git`
 2. Install dependencies: `npm install`
 3. Run the browser: `npm start`
 
