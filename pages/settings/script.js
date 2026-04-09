@@ -282,7 +282,87 @@ hueBar.addEventListener("mousedown", (e) => {
 });
 
 // The function the generates the scheme
-639
+function generateColorScale(baseHex) {
+	// --- helpers ---
+	function hexToRgb(hex) {
+		hex = hex.replace("#", "");
+		if (hex.length === 3) hex = hex.split("").map(x => x + x).join("");
+		const num = parseInt(hex, 16);
+		return [
+			(num >> 16) & 255,
+			(num >> 8) & 255,
+			num & 255
+		];
+	}
+
+	function rgbToHsl(r, g, b) {
+		r /= 255; g /= 255; b /= 255;
+		const max = Math.max(r, g, b), min = Math.min(r, g, b);
+		let h, s, l = (max + min) / 2;
+
+		if (max === min) {
+			h = s = 0;
+		} else {
+			const d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch (max) {
+				case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+				case g: h = ((b - r) / d + 2); break;
+				case b: h = ((r - g) / d + 4); break;
+			}
+			h *= 60;
+		}
+		return [h, s * 100, l * 100];
+	}
+
+	function hslToHex(h, s, l) {
+		s /= 100; l /= 100;
+		const k = n => (n + h / 30) % 12;
+		const a = s * Math.min(l, 1 - l);
+		const f = n =>
+			l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+
+		const r = Math.round(255 * f(0));
+		const g = Math.round(255 * f(8));
+		const b = Math.round(255 * f(4));
+
+		return "#" + [r, g, b]
+			.map(x => x.toString(16).padStart(2, "0"))
+			.join("");
+	}
+
+	// --- convert base color to HSL ---
+	const [r, g, b] = hexToRgb(baseHex);
+	const [h, s, l] = rgbToHsl(r, g, b);
+
+	// --- generate 10 steps ---
+	const scale = {};
+
+	for (let i = 1; i <= 10; i++) {
+		const t = (i - 1) / 9; // 0 → 1
+
+		// Darkest → Lightest curve
+		let lightness = l * 0.25 + t * (97 - l * 0.25);
+
+		// Saturation curve:
+		// - keep strong in mid tones
+		// - reduce for c10 but never to zero
+		let saturation = s * (1 - t * 0.6) + 10 * t;
+
+		// Ensure c10 has color (not white)
+		if (i === 10) {
+			saturation = Math.max(s * 0.25, 12); // minimum tint
+			lightness = 96; // near-white but colored
+		}
+
+		scale[`c${i}`] = hslToHex(h, Math.min(saturation, 100), lightness);
+
+		scale['base'] = baseHex;
+		scale['hue'] = globHue;
+	}
+
+	return scale;
+}
 
 function toggleSidebar() {
 	let sidebar = document.querySelector('aside');

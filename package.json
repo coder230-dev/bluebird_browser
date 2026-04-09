@@ -4,7 +4,7 @@
   "displayName": "Bluebird Browser",
   "productName": "Bluebird Browser",
   "publisher": "Bluebird IPE",
-  "version": "2.0.0.beta2",
+  "version": "2.0.0",
   "description": "",
   "main": "main.js",
   "build": {

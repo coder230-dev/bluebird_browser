@@ -408,15 +408,13 @@ if (profileInfoEl) {
 // Profile switcher menu (uses electronAPI for windows)
 if (profileInfoEl) {
 	profileInfoEl.addEventListener('click', async function () {
-		// If you have an api.profiles.list bridge, keep it; otherwise fallback to IndexedDB:
+		// Use JSON-based profiles for consistency across windows
 		let profiles = [];
 		if (window.api?.profiles?.list) {
 			profiles = await window.api.profiles.list();
 		} else {
 			profiles = await listProfiles();
 		}
-
-		console.log(profiles)
 
 		const items = profiles.map(p => {
 			let icon;
@@ -441,7 +439,8 @@ if (profileInfoEl) {
 				name: p.name,
 				category: "Profiles",
 				action: () => {
-					window.electronAPI?.newWindow?.(p.name);
+					console.log(p.name)
+					window.electronAPI?.newWindow?.(p.name, 'new-window');
 				}
 			};
 		});
@@ -732,9 +731,20 @@ async function loadBrowserSettings() {
 
 	// Theme
 	let theme = settings.theme;
-	try {
-		theme = JSON.parse(theme);
-	} catch { }
+	if (typeof theme === 'string') {
+		try {
+			theme = JSON.parse(theme);
+		} catch (e) {
+			console.warn('Failed to parse theme:', e);
+			theme = {};
+		}
+	} else if (Array.isArray(theme)) {
+		theme = Object.fromEntries(theme.map(t => [t.key, t.value]));
+	} else if (typeof theme === 'object' && theme !== null) {
+		// already object
+	} else {
+		theme = {};
+	}
 	Object.entries(theme).forEach(([key, value]) => {
 		document.documentElement.style.setProperty(`--${key}`, value);
 	});
@@ -747,7 +757,6 @@ async function loadBrowserSettings() {
 
 	if (bkMB) {
 		const show = await loadSetting("showBookmarksBar");
-		console.log(show)
 		bkMB.style.display = show ? "flex" : "none";
 		bkMB.classList.toggle("displayed", show);
 	}
@@ -1653,7 +1662,7 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 
 function toggleBookmarkBar() {
 	const current = loadSetting('showBookmarksBar')
-	updateSetting('showBookmarksBar', false);
+	updateSetting('showBookmarksBar', !current);
 	window.postMessage({ updateSettings: true }, "*");
 }
 

@@ -761,8 +761,8 @@ async function createWindow(profile = 'Default') {
 	});
 
 	if (isMac) {
-		win.commandLine.appendSwitch("enable-smooth-scrolling");
-		win.commandLine.appendSwitch("disable-features", "ScrollPredictor");
+		// app.commandLine.appendSwitch("enable-smooth-scrolling");
+		// app.commandLine.appendSwitch("disable-features", "ScrollPredictor");
 	}
 
 
