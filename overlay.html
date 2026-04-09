@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=BBH+Hegarty&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Special+Gothic+Expanded+One&family=Stack+Sans+Text:wght@200..700&display=swap');
+
+        html {
+            color-scheme: normal;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            color: #141c2c;
+            gap: 10px;
+            transition: transform 0.4s cubic-bezier(0.075, 0.82, 0.165, 1),
+                opacity 0.6s, z-index 0.6s;
+            font-size: 0.875rem;
+            pointer-events: none;
+            display: flex;
+            position: relative;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-width: 100%;
+            font-family: "Poppins";
+            overflow: auto;
+        }
+
+        #notification {
+            transition: transform 0.4s cubic-bezier(0.075, 0.82, 0.165, 1),
+                opacity 0.6s, z-index 0.6s;
+            padding: 10px;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+
+            /* Background panel */
+            background: light-dark(#a3ccf5, #182235);
+
+            /* Text color */
+            color: light-dark(#141c2c, #e0efff);
+
+            /* Border */
+            border: 1px solid light-dark(#1c2d45, #4d8fd6);
+
+            border-radius: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        #notification i {
+            font-size: 1.2rem;
+
+            /* Icon background */
+            background: light-dark(#2160a0, #4d8fd6);
+
+            color: white;
+            padding: 6px;
+            border-radius: 50%;
+        }
+
+        #notification .key {
+            /* Key border */
+            border: 1px solid light-dark(#215083, #4d8fd6);
+
+            padding: 5px 10px;
+            font-size: 0.875rem;
+            border-radius: 5px;
+            font-family: "Poppins";
+            margin: 0 6px;
+
+            /* Key background */
+            background: light-dark(#4d8fd6, #1c2d45);
+
+            /* Key text */
+            color: light-dark(#141c2c, #e0efff);
+        }
+
+        #notification.open {
+            opacity: 1;
+            transform: translate(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="notification"></div>
+
+    <script>
+        const msgEl = document.getElementById("notification");
+        window.overlayAPI.onMessage((html, icon, timeout) => {
+            msgEl.innerHTML = `<i class="material-symbols-rounded">${icon || 'notifications'}</i> <message>${html}</message>`;
+            msgEl.classList.add('open')
+            setTimeout(function () {
+                msgEl.classList.remove('open')
+            }, (timeout - 0.41) * 1000)
+            requestAnimationFrame(() => {
+                const rect = document.body.getBoundingClientRect();
+                window.overlayAPI.resize(rect.width, rect.height);
+            });
+        });
+    </script>
+</body>
+
+</html>

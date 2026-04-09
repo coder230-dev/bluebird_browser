@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Profile - Browser</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+
+<body>
+    <nav id="main-nav">
+        <img src="images/Copilot_20251122_223052.png" alt="Bluebird Browser Logo">
+        <span class="title-text">Add Profile</span>
+    </nav>
+    <main id="add-profile-page">
+        <div class="centered-t" style="padding: 12px;">
+            <div class="page">
+                <i class="material-symbols-rounded icon-full" style="font-size: 50px;">groups</i>
+                <h3 style="font-family: 'Special Gothic Expanded One';">Add Your Own Bluebird Profile</h3>
+                <p>Is it for another user? Is it to seperate work and games? Well, your in the right place. We will
+                    walk you through to create your account!</p>
+                <div style="position: sticky; bottom: 0; left: 0;">
+                    <button style="margin-top: 50px;" class="wide-btn active" onclick="changePage(1)">Next</button><br>
+                    <button style="margin-top: 10px;" class="wide-btn" onclick="window.close()">Close</button>
+                </div>
+            </div>
+            <div class="page" style="display: none;">
+                <i class="material-symbols-rounded icon-full" style="font-size: 50px;">badge</i>
+                <h3 style="font-family: 'Special Gothic Expanded One';">Name your Profile</h3>
+                <div style="display: flex; justify-content: center;">
+                    <div>
+                        <p style="text-align: left;">What should the profile be named? (work, school, your name,
+                            etc.)</p>
+                        <input class="wide-btn" type="text" id="profileName" placeholder="Name your Profile*">
+                    </div>
+                </div>
+                <div style="position: sticky; bottom: 0; left: 0;">
+                    <button style="margin-top: 50px;" class="wide-btn active" onclick="changePage(2)">Next</button><br>
+                    <button style="margin-top: 10px;" class="wide-btn" onclick="changePage(0)">Back</button>
+                </div>
+            </div>
+            <div class="page" style="display: none;">
+                <i class="material-symbols-rounded icon-full" style="font-size: 50px;">image_arrow_up</i>
+                <h3 style="font-family: 'Special Gothic Expanded One';">Add A Profile Avatar</h3>
+                <p>You can upload your image or insert a monograph. To skip, just press "Next".</p>
+                <div style="display: flex; gap: 10px; background: black; border-radius: 10px; padding: 12px;">
+                    <div class="profile-img" id="profile-img-preview" style="aspect-ratio: 1/1; height: fit-content;">
+                        <i class="material-symbols-rounded">account_circle</i>
+                    </div>
+                    <span>
+                        <h4 style="padding: 0; margin: 0;">Add Profile Avatar</h4>
+                        <p>Add either a monograph or a image from your own, for from the web.</p>
+                    </span>
+                </div>
+                <div>
+                    <select id="avatar-source" class="wide-btn">
+                        <option value="image">Upload Image</option>
+                        <option value="mono">Enter Monograph</option>
+                    </select>
+
+                    <div id="img-pick-cont" style="display:none;">
+                        <p>Upload your file:</p>
+                        <input type="file" id="profile-img-picker">
+                    </div>
+
+                    <div id="monograph-cont" style="display:none;">
+                        <p>Insert Your Monograph:</p>
+                        <input type="text" id="monograph-picker">
+                    </div>
+                </div>
+                <div style="position: sticky; bottom: 0; left: 0;">
+                    <button style="margin-top: 50px;" class="wide-btn active" id="createAccount">Create
+                        Account</button><br>
+                    <button style="margin-top: 10px;" class="wide-btn" onclick="changePage(1)">Back</button>
+                </div>
+            </div>
+            <div class="page" style="display: none;">
+                <i class="material-symbols-rounded icon-full" style="font-size: 50px;">done_all</i>
+                <h3 style="font-family: 'Special Gothic Expanded One';">All Done</h3>
+                <p>You have created your new profile. A new window with that profile will open.</p>
+                <button id="openProfileBtn" style="margin-top: 10px;" class="wide-btn">Done</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="renderer.js" type="module"></script>
+    <script src="/preload.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

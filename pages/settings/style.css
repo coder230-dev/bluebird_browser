@@ -1,0 +1,287 @@
+@import url('https://fonts.googleapis.com/css2?family=BBH+Hegarty&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Special+Gothic+Expanded+One&family=Stack+Sans+Text:wght@200..700&display=swap');
+
+:root {
+    /* Deep navy → colorful near-white */
+    --c1: #141c2c;
+    /* darkest blue */
+    --c2: #182235;
+    --c3: #1c2d45;
+    --c4: #1f3858;
+    --c5: #21446c;
+    --c6: #215083;
+    --c7: #2160a0;
+    --c8: #4d8fd6;
+    /* more saturation */
+    --c9: #a3ccf5;
+    /* brighter, softer */
+    --c10: #e4f1ff;
+    /* more color than before, still near-white */
+
+    /* Auto-switching scheme using light-dark()
+	   Light mode → reverse (10 → 1)
+	   Dark mode → normal (1 → 10)
+	*/
+    --scheme-1: light-dark(var(--c10), var(--c1));
+    --scheme-2: light-dark(var(--c9), var(--c2));
+    --scheme-3: light-dark(var(--c8), var(--c3));
+    --scheme-4: light-dark(var(--c7), var(--c4));
+    --scheme-5: light-dark(var(--c6), var(--c5));
+    --scheme-6: light-dark(var(--c5), var(--c6));
+    --scheme-7: light-dark(var(--c4), var(--c7));
+    --scheme-8: light-dark(var(--c3), var(--c8));
+    --scheme-9: light-dark(var(--c2), var(--c9));
+    --scheme-10: light-dark(var(--c1), var(--c10));
+}
+
+::selection {
+    background: var(--scheme-6);
+    color: var(--scheme-9);
+}
+
+html {
+    color-scheme: light dark;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    background: var(--scheme-1);
+    display: grid;
+    grid-template-areas:
+        "aside main"
+        "aside footer";
+    grid-template-columns: 325px 1fr;
+    font-size: 1rem;
+    column-gap: 12px;
+    min-height: calc(100vh - 16px);
+    font-family: "Poppins";
+}
+
+aside {
+    padding: 8px;
+    background: var(--scheme-2);
+    border-radius: 18px;
+    grid-area: aside;
+    border: 1px solid var(--scheme-5);
+
+    header {
+        display: flex;
+        align-items: center;
+        font-family: "Special Gothic Expanded One";
+        border-bottom: 1px solid var(--scheme-5);
+        margin-bottom: 5px;
+
+        img {
+            height: 2.2rem;
+        }
+    }
+
+    p {
+        padding: 0;
+        margin: 0;
+    }
+
+    a {
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: calc(100% - 30px);
+        font-family: "Poppins";
+        color: var(--scheme-10);
+        transition: 0.02s ease;
+        border-radius: 15px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        text-decoration: none;
+
+        i {
+            color: var(--scheme-9);
+        }
+    }
+
+    a:hover {
+        background: var(--scheme-2);
+    }
+
+    a:active {
+        border: 1px solid var(--scheme-8);
+    }
+
+    a.active {
+        background: var(--scheme-3);
+    }
+}
+
+#main-content {
+    padding: 12px;
+    grid-area: main;
+    border-radius: 15px;
+    height: 100vh;
+    max-height: calc(100vh - 22px - 24px);
+    overflow: auto;
+    border: 1px solid var(--scheme-5);
+}
+
+section h2 {
+    color: var(--scheme-9);
+    font-family: "Special Gothic Expanded One";
+    position: sticky;
+    top: -12px;
+    z-index: 3;
+    padding: 4px;
+    background: var(--scheme-1);
+}
+
+.card {
+    background: var(--scheme-2);
+    border: 1px solid var(--scheme-3);
+    padding: 12px;
+    border-radius: 18px;
+
+    h3 {
+        padding: 0;
+        margin: 0;
+        font-family: "Montserrat";
+    }
+}
+
+.flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+svg {
+    height: 1.2rem;
+    transform-origin: center;
+    animation: rotate4 2s linear infinite;
+    padding: 0;
+    margin: 0;
+}
+
+circle {
+    fill: none;
+    stroke: var(--scheme-10);
+    stroke-width: 4;
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+    stroke-linecap: round;
+    animation: dash4 1.5s ease-in-out infinite;
+    padding: 0;
+    margin: 0;
+}
+
+@keyframes rotate4 {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes dash4 {
+    0% {
+        stroke-dasharray: 1, 200;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        stroke-dasharray: 90, 200;
+        stroke-dashoffset: -35px;
+    }
+
+    100% {
+        stroke-dashoffset: -125px;
+    }
+}
+
+.select-box {
+    padding: 12px;
+    border: 1px solid var(--scheme-7);
+    border-radius: 15px;
+    aspect-ratio: 1/1;
+    width: 100px;
+    cursor: pointer;
+    position: relative;
+
+    input[type=radio] {
+        position: absolute;
+        z-index: -10;
+    }
+
+    i {
+        margin-bottom: 10px;
+        display: block;
+        font-size: 2rem;
+    }
+}
+
+.select-box:has(input[type=radio]:checked) {
+    background: var(--scheme-3);
+    border: 1px solid var(--scheme-10);
+}
+
+#hue-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(to right,
+            red, yellow, lime, cyan, blue, magenta, red);
+    position: relative;
+    cursor: pointer;
+}
+
+#hue-cursor {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    position: absolute;
+    top: -2px;
+    transform: translateX(-6px);
+}
+
+#moreBtn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 12px;
+    z-index: 10;
+    backdrop-filter: blur(20px);
+    background: var(--scheme-3);
+    border-radius: 10px;
+    border: none;
+    color: var(--scheme-9);
+    outline: 1px solid var(--scheme-8);
+    display: none;
+    cursor: pointer;
+}
+
+#moreBtn:hover {
+    outline: 1px solid var(--scheme-10);
+}
+
+@media screen and (max-width: 620px) {
+    body {
+        display: unset;
+    }
+
+    #moreBtn {
+        display: unset;
+    }
+
+    aside {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 10;
+        height: calc(100% - 30px);
+        max-width: calc(100% - 30px);
+        width: 360px;
+        border-radius: 5px 10px 10px 5px;
+        transform: translate(-102%);
+        transition: 0.4s cubic-bezier(0.075, 0.82, 0.165, 1);
+    }
+
+    aside.open {
+        transform: none;
+    }
+}

@@ -1,0 +1,371 @@
+/* style.css - Dark Blue Battery Analytics Theme
+   Drop this file into your project and link it from the page head.
+*/
+
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=BBH+Hegarty&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Special+Gothic+Expanded+One&family=Stack+Sans+Text:wght@200..700&display=swap');
+
+/* Color tokens */
+:root {
+    --bg-900: #071226;
+    /* deepest blue */
+    --bg-800: #0b1a33;
+    --panel: #0f2238;
+    --muted: #9fb0c8;
+    --accent: #4fc3f7;
+    /* cyan accent */
+    --accent-2: #7CFC00;
+    /* lime accent for battery */
+    --glass: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.04);
+    --card-shadow: 0 6px 18px rgba(2, 8, 20, 0.6);
+    --radius-lg: 18px;
+    --radius-xl: 28px;
+    --glass-2: rgba(255, 255, 255, 0.02);
+    --text: #e6f0fb;
+    --muted-2: #b8cfe6;
+}
+
+/* Page layout */
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100vh;
+    margin: 0;
+    font-family: "Poppins", "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg, var(--bg-900) 0%, var(--bg-800) 100%);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: auto;
+}
+
+body {
+    padding: 20px;
+    display: block;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+}
+
+/* Main container */
+main {
+    width: 100%;
+    max-width: 580px;
+    min-height: 520px;
+    margin: 12px;
+    display: flex;
+    grid-template-columns: 1fr 360px;
+    gap: 18px;
+    align-items: start;
+    position: relative;
+    left: 50%;
+    transform: translate(-50%);
+}
+
+/* Left column becomes full width on small screens */
+@media (max-width: 880px) {
+    main {
+        grid-template-columns: 1fr;
+        padding-bottom: 40px;
+    }
+}
+
+/* Card base */
+.card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    border-radius: var(--radius-xl);
+    padding: 18px;
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
+    color: var(--text);
+}
+
+/* Card title and body */
+.card h3 {
+    margin: 0 0 8px 0;
+    font-family: "Special Gothic Expanded One", "Poppins", sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--muted-2);
+    font-size: 14px;
+}
+
+.card .card-body {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* Grid of cards in left column */
+.left-column {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+/* Right column stack */
+.right-column {
+    display: grid;
+    grid-auto-rows: min-content;
+    gap: 12px;
+}
+
+/* Summary card specifics */
+.summary {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.material-symbols-rounded {
+    font-variation-settings: 'wght' 600;
+    color: var(--accent);
+    font-size: 44px;
+    line-height: 1;
+    display: inline-block;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(180deg, rgba(127, 200, 255, 0.06), rgba(127, 200, 255, 0.03));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Percentage text */
+.percent {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.subtle {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* Battery gauge */
+.gauge {
+    margin-top: 12px;
+}
+
+.gauge-bar {
+    height: 18px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+}
+
+.gauge-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-2), #00C853);
+    transition: width 420ms ease;
+    border-radius: 12px 0 0 12px;
+    box-shadow: inset 0 -6px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* Small stat grid */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.stat {
+    background: var(--glass);
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-2);
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.stat b {
+    display: block;
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+/* Trends card layout */
+.trends {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.trend-item {
+    flex: 1 1 140px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.005));
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    color: var(--muted);
+}
+
+.trend-item .value {
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 6px;
+}
+
+/* Health card */
+.health-score {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.health-badge {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(127, 200, 255, 0.04), rgba(127, 200, 255, 0.02));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: var(--accent);
+    font-size: 20px;
+    border: 1px solid rgba(127, 200, 255, 0.06);
+}
+
+/* Tips list */
+.tips {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/* History canvases */
+canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.005));
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+button {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(2, 8, 20, 0.45);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Small meta text */
+.meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* Footer / sample count */
+.sample-count {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 640px) {
+    .material-symbols-rounded {
+        font-size: 36px;
+        width: 48px;
+        height: 48px;
+    }
+
+    .percent {
+        font-size: 18px;
+    }
+
+    main {
+        padding: 8px;
+    }
+}
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Utility */
+.center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.small {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+}
+
+/* Card sizing */
+.card-lg {
+    grid-column: span 6;
+}
+
+.card-md {
+    grid-column: span 4;
+}
+
+.card-sm {
+    grid-column: span 3;
+}
+
+/* Responsive fallback */
+@media (max-width: 880px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-lg,
+    .card-md,
+    .card-sm {
+        grid-column: span 1;
+    }
+}

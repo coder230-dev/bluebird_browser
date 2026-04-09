@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluebird Browser Settings</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+</head>
+
+<body>
+    <button id="moreBtn" onclick="toggleSidebar()" class="material-symbols-rounded">menu</button>
+    <aside id="settingSidebar">
+        <header>
+            <img src="../profilePages/images/Copilot_20251122_223052.png" alt="">
+            <h3>Settings</h3>
+        </header>
+        <a class="active" onclick="toggleSidebar()" data-target="profile" href="#profile"><i
+                class="material-symbols-rounded">account_circle</i>Profile</a>
+        <a data-target="appearance" href="#appearance"><i class="material-symbols-rounded">brush</i> Appearance</a>
+        <a data-target="general" href="#general"><i class="material-symbols-rounded">settings</i> General</a>
+        <a data-target="privacy" href="#privacy"><i class="material-symbols-rounded">privacy</i> Privacy & Security</a>
+        <a data-target="downloads" href="#downloads"><i class="material-symbols-rounded">download</i> Downloads</a>
+        <a data-target="sitesettings" href="#sitesettings"><i class="material-symbols-rounded">page_info</i> Site Settings</a>
+        <a data-target="about" href="#about"><i class="material-symbols-rounded">info</i> About Browser</a>
+        <hr>
+        <a data-target="experimentalbeta" href="#experimentalbeta"><i class="material-symbols-rounded">experiment</i> Experimental Features</a>
+    </aside>
+
+    <main id="main-content">
+        <section id="profile" class="setting-section">
+            <h2>Profile</h2>
+            <div class="card" id="curProfileInfo">
+                <div class="flex">
+                    <svg class="load" viewBox="25 25 50 50" class="spinner">
+                        <circle r="20" cy="50" cx="50"></circle>
+                    </svg>
+                    <p>Your profile info should load here.</p>
+                </div>
+            </div>
+        </section>
+        <section id="appearance" class="setting-section">
+            <h2>Appearance</h2>
+            <div class="card">
+                <div class="flex" style="gap: 12px;">
+                    <div style="width: 100%;">
+                        <h3>Theme</h3>
+                        <p>Choose from light or dark mode, or use what your system is currently using. Make this your
+                            own
+                            browser!</p>
+
+                    </div>
+                    <div class="flex" style="justify-content: right;">
+                        <label id="light-mode-theme" class="select-box"
+                            onclick="updateSetting('systemTheme', 'light');">
+                            <input type="radio" name="mode-theme" id="light-appearance">
+                            <i class="material-symbols-rounded">light_mode</i>
+                            Light
+                        </label>
+                        <label id="dark-mode-theme" class="select-box" onclick="updateSetting('systemTheme', 'dark');">
+                            <input type="radio" name="mode-theme" id="dark-appearance">
+                            <i class="material-symbols-rounded">dark_mode</i>
+                            Dark
+                        </label>
+                        <label id="system" class="select-box" onclick="updateSetting('systemTheme', 'light dark');">
+                            <input type="radio" name="mode-theme" id="light-dark-appearance">
+                            <i class="material-symbols-rounded">computer</i>
+                            System Theme
+                        </label>
+                    </div>
+                </div>
+                <hr style="margin: 10px 0;">
+                <div class="flex" style="justify-content: space-between; margin-top: 12px;">
+                    <span>Theme Color</span>
+                    <div>
+                        <div id="hue-bar">
+                            <div id="hue-cursor"></div>
+                        </div>
+                        <button>Choose Preset Colors</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <hr>
+        <p>Settings below are under construction. GO DOWN AT YOUR OWN RISK</p>
+        <section id="general" class="setting-section">
+            <h2>General</h2>
+        </section>
+        <section id="privacy" class="setting-section">
+            
+        </section>
+        <section id="downloads" class="setting-section">
+            <h2>Downloads</h2>
+            <div class="card">Bluebird Browser will always ask you where to download content to.</div>
+        </section>
+        <section id="sitesettings" class="setting-section">
+            <h2>Site Settings</h2>
+        </section>
+        <section id="about" class="setting-section">
+            <h2>About</h2>
+        </section>
+        <section id="experimentalbeta" class="setting-section">
+            <h2>Experimental <span class="tag" style="background: var(--scheme-8);">BETA</span></h2>
+        </section>
+    </main>
+    <footer></footer>
+    <script src="script.js"></script>
+</body>
+
+</html>
