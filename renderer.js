@@ -16,7 +16,14 @@ async function setZoomSetting() {
 }
 
 const updateContent = `
-<div class="update-app-content">
+	<div class="update-app-content">
+		<h2>You in a BETA version</h2>
+		<p>Watch out for bugs and issues.</p>
+		<a href="" click="createTab('https://github.com/coder230-dev/bluebird_browser')">https://github.com/coder230-dev/bluebird_browser (GitHub Project)</a>
+	</div>
+`
+
+{/* <div class="update-app-content">
 	<h2>What's New In Update 2.3.0?</h2>
 	<p>You have been updated to the new version of Bluebird Browser! Here's what it includes:</p>
 	<div class="flex">
@@ -64,8 +71,7 @@ const updateContent = `
 			<p>We hope you enjoy these features! Till the next time.</p>
 		</ul>
 	</div>
-</div>
-`
+</div> */}
 
 // This is for battery manager, different from the other code.
 navigator.getBattery().then(battery => {
