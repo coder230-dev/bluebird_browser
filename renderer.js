@@ -7,6 +7,14 @@ let appVersion
 window.cachedHistoryRecent = [];
 const tabHistory = {};
 
+let zoomSetting = undefined;
+
+async function setZoomSetting() {
+	zoomSetting = (await loadSetting('website.dZoomValue') || 1) / 100;
+	console.log(zoomSetting)
+
+}
+
 const updateContent = `
 <div class="update-app-content">
 	<h2>What's New In Update 2.3.0?</h2>
@@ -97,7 +105,7 @@ window.api.getAppVersion().then(version => {
 // IndexedDB
 function openDB() {
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open('BrowserProfilesDB', 5);
+		const request = indexedDB.open('BrowserProfilesDB', 6);
 
 		request.onupgradeneeded = (event) => {
 			const db = event.target.result;
@@ -438,8 +446,12 @@ if (profileInfoEl) {
 				icon: icon.type == 'image' ? `<img src="${p.avatar}">` : p.avatar,
 				name: p.name,
 				category: "Profiles",
-				action: () => {
-					console.log(p.name)
+				submenu: [
+					{ name: 'Close this Window & Switch', icon: 'change_circle', icType: 'GF', category: 'Profile', function: () => { window.close(); window.electronAPI?.newWindow?.(p.name, 'new-window'); } },
+					{ name: 'Open Profile in New Window', icon: 'open_in_new', icType: 'GF', category: 'Profile', function: () => { window.electronAPI?.newWindow?.(p.name, 'new-window'); } },
+					{ name: 'Manage this Profile', icon: 'change_circle', icType: 'GF', category: 'Manage', function: () => { openSidebarApp('pages/settings/index.html#profile', 'Settings', true) } }
+				],
+				function: () => {
 					window.electronAPI?.newWindow?.(p.name, 'new-window');
 				}
 			};
@@ -490,7 +502,7 @@ if (profileInfoEl) {
 			category: 'Manage',
 			function: () => {
 				window.electronAPI?.openAppPage?.(
-					'pages/profilePages/accountMakeSure.html',
+					'pages/profilePages/profileManager.html',
 					500,
 					700,
 					'Default'
@@ -728,6 +740,8 @@ async function loadBrowserSettings() {
 	settingsArray.forEach(({ key, value }) => {
 		settings[key] = value;
 	});
+
+	setZoomSetting();
 
 	// Theme
 	let theme = settings.theme;
@@ -2414,6 +2428,10 @@ function createTab(url, opts = {}) {
 			console.warn('Screenshot capture failed for tab:', tab.dataset.id, err);
 		});
 
+		if (zoomSetting) {
+			wv.setZoomFactor(zoomSetting || 1);
+		}
+
 		updateTabElement(tab);
 		updateNavButtons(wv);
 	});
@@ -2777,7 +2795,7 @@ function updateOverflow() {
 	const newTabWidth = document.getElementById("new-tab").getBoundingClientRect().width;
 	const overflowBtnWidth = overflowBtn.getBoundingClientRect().width;
 
-	let usedWidth = newTabWidth + overflowBtnWidth + 10;
+	let usedWidth = newTabWidth + overflowBtnWidth + 50;
 	if (document.getElementById('active-overflow-tag')) {
 		usedWidth += document.getElementById('active-overflow-tag').getBoundingClientRect().width
 	}

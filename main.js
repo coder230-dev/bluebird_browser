@@ -640,7 +640,7 @@ async function buildAppMenu(win) {
 				...profilesSubmenu,
 				{ type: 'separator' },
 				{ label: 'Add Profile…', click: () => loadBrowserWindow('pages/profilePages/addProfile.html', 550, 750) },
-				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/accountMakeSure.html', 500, 700) }
+				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 500, 700) }
 			]
 		},
 		{
@@ -1054,7 +1054,7 @@ app.whenReady().then(async () => {
 	ensureProfile(currentProfile);
 
 	// Open the account manager window first and build menu with that win
-	const mgrWin = loadBrowserWindow('pages/profilePages/accountMakeSure.html', 500, 700, undefined);
+	const mgrWin = loadBrowserWindow(`pages/profilePages/profileManager.html`, 700, 700, undefined);
 	const menu = await buildAppMenu(mgrWin);
 	Menu.setApplicationMenu(menu);
 
@@ -1076,7 +1076,7 @@ app.whenReady().then(async () => {
 		{
 			label: 'Profile',
 			submenu: [
-				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/accountMakeSure.html', 500, 700) }
+				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 500, 700) }
 			]
 		}
 	])
@@ -1112,7 +1112,7 @@ ipcMain.handle('app:getVersion', () => {
 
 app.on('activate', () => {
 	if (BrowserWindow.getAllWindows().length === 0) {
-		const mgrWin = loadBrowserWindow('pages/profilePages/accountMakeSure.html', 900, 900, undefined);
+		const mgrWin = loadBrowserWindow('pages/profilePages/profileManager.html', 900, 900, undefined);
 		buildAppMenu(mgrWin).then(menu => Menu.setApplicationMenu(menu));
 	}
 });
