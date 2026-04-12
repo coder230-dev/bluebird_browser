@@ -4984,7 +4984,9 @@ function startSearchMode(mode) {
 		address.value = '';
 		address.placeholder = 'Search for Bookmarks';
 		address.focus();
-		viewWebsiteInfo.innerHTML = 'bookmarks';
+		viewWebsiteInfo.innerHTML = `
+		<i class="material-symbols-rounded">bookmark</i></button>
+		`;
 		searchMode = 'bookmark';
 	}
 
@@ -4992,13 +4994,17 @@ function startSearchMode(mode) {
 		address.value = '';
 		address.placeholder = 'Search History';
 		address.focus();
-		viewWebsiteInfo.innerHTML = 'history';
+		viewWebsiteInfo.innerHTML = `
+		<i class="material-symbols-rounded">history</i></button>
+		`;
 		searchMode = 'history';
 	}
 
 	address.onblur = () => {
 		address.placeholder = 'Search or enter URL address';
-		viewWebsiteInfo.innerHTML = 'web';
+		viewWebsiteInfo.innerHTML = `
+		<i class="material-symbols-rounded">web</i></button>
+		`;
 		searchMode = null;
 		address.onblur = null;
 	};
@@ -5406,7 +5412,7 @@ if (address) {
 		// Otherwise hide it
 		searchModeBtn.style.display = 'none';
 	});
-	
+
 	searchModeBtn.onblur = () => {
 		searchModeBtn.style.display = 'none';
 	}
