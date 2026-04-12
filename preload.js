@@ -200,6 +200,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	// --- Context menus
 	sendContextMenu: (info) => ipcRenderer.send('webview-context-menu', info),
 	registerWebview: (webContentsId) => ipcRenderer.send('register-webview', webContentsId),
+	clearBrowsingData: () => ipcRenderer.invoke('clear-browsing-data'),
 
 	// --- Profiles
 	onSwitchProfile: (callback) => {
@@ -231,17 +232,44 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	offSidebarApp: (handler) => ipcRenderer.removeListener('openSidebarApp', handler),
 
-	// updateAviable: (callback) => {
-	// 	ipcRenderer.on("update-available", () => {
-	// 		showUpdateButton("Downloading update...");
-	// 	});
-	// },
+	onUpdateChecking: (callback) => {
+		const handler = () => callback();
+		ipcRenderer.on('update-checking', handler);
+		return handler;
+	},
 
-	// updateDownloaded: (callback) => {
-	// 	ipcRenderer.on("update-downloaded", () => {
+	onUpdateAvailable: (callback) => {
+		const handler = (_event, data) => callback(data);
+		ipcRenderer.on('update-available', handler);
+		return handler;
+	},
 
-	// 	});
-	// },
+	onUpdateNotAvailable: (callback) => {
+		const handler = () => callback();
+		ipcRenderer.on('update-not-available', handler);
+		return handler;
+	},
+
+	onUpdateDownloadProgress: (callback) => {
+		const handler = (_event, data) => callback(data);
+		ipcRenderer.on('update-download-progress', handler);
+		return handler;
+	},
+
+	onUpdateDownloaded: (callback) => {
+		const handler = (_event, data) => callback(data);
+		ipcRenderer.on('update-downloaded', handler);
+		return handler;
+	},
+
+	onUpdateError: (callback) => {
+		const handler = (_event, data) => callback(data);
+		ipcRenderer.on('update-error', handler);
+		return handler;
+	},
+
+	installUpdate: () => ipcRenderer.send('install-update'),
+	checkForUpdates: () => ipcRenderer.send('check-for-updates'),
 
 	send: (channel, data) => ipcRenderer.send(channel, data),
 
@@ -316,9 +344,14 @@ contextBridge.exposeInMainWorld('permissionsAPI', {
 	onRequest: (callback) => {
 		ipcRenderer.on('permission-request', (_event, data) => callback(data));
 	},
-	respond: (origin, permission, allow) => {
-		ipcRenderer.send('permission-response', { origin, permission, allow });
+	respond: (requestId, origin, permission, allow) => {
+		ipcRenderer.send('permission-response', { requestId, origin, permission, allow });
 	}
+});
+
+contextBridge.exposeInMainWorld('settingsAPI', {
+	sendUpdate: (message) => ipcRenderer.sendToHost('settings-update', message),
+	sendBookmark: (message) => ipcRenderer.sendToHost('add-bookmark', message)
 });
 
 contextBridge.exposeInMainWorld("battery", {

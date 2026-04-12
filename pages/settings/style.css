@@ -55,6 +55,29 @@ body {
     column-gap: 12px;
     min-height: calc(100vh - 16px);
     font-family: "Poppins";
+	user-select: none;
+}
+
+details {
+    padding: 1px;
+    background: var(--scheme-5);
+    border-radius: 15px;
+    border: 1px solid transparent;
+    summary {
+        border-radius: 15px;
+        padding: 12px;
+    }
+}
+
+details[open] {
+    background: none;
+    border: 1px solid var(--scheme-10);
+    summary {
+        background: none;
+        border-bottom: 1px solid var(--scheme-10);
+        border-radius: 15px 15px 0 0;
+        margin-bottom: 10px;
+    }
 }
 
 aside {
@@ -113,6 +136,27 @@ aside {
     }
 }
 
+.wide-btn {
+    width: 100%;
+    padding: 12px 15px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 15px;
+    font-family: "Poppins";
+    cursor: pointer;
+    i:nth-last-of-type(1) {
+        color: var(--scheme-8);
+    }
+    &:hover {
+        border: 1px solid var(--scheme-9);
+        background: var(--scheme-5);
+    }
+}
+
+.wide-btn+.wide-btn {
+    margin-top: 4px;
+}
+
 #main-content {
     padding: 12px;
     grid-area: main;
@@ -123,14 +167,60 @@ aside {
     border: 1px solid var(--scheme-5);
 }
 
+section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.toolbar-set {
+    .tollbarSetCont {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .flex {
+        flex: 1 1 calc(50% - 10px);
+        background: var(--scheme-3);
+        justify-content: space-between;
+        border: 1px solid var(--scheme-9);
+        padding: 12px;
+        border-radius: 10px;
+        min-width: 250px;
+        
+        i {
+            padding: 6px;
+            background: var(--scheme-5);
+            border-radius: 90px;
+        }
+
+        b {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    }
+}
+
+/* On smaller screens → 1 per row */
+@media (max-width: 700px) {
+    .toolbar-set .flex {
+        flex: 1 1 100%;
+    }
+}
+
 section h2 {
     color: var(--scheme-9);
     font-family: "Special Gothic Expanded One";
     position: sticky;
     top: -12px;
     z-index: 3;
-    padding: 4px;
+    padding: 12px;
     background: var(--scheme-1);
+    border-radius: 0 0 10px 10px;
+    border-top: 1px solid var(--scheme-4);
 }
 
 .card {
@@ -149,6 +239,13 @@ section h2 {
 .flex {
     display: flex;
     align-items: center;
+    gap: 12px;
+}
+
+.flex-sb {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
 }
 
@@ -284,4 +381,52 @@ circle {
     aside.open {
         transform: none;
     }
+}
+
+/* From Uiverse.io by vinodjangid07 */
+/* To hide the checkbox */
+.check-toggle {
+    display: none;
+}
+
+.toggleSwitch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 50px;
+    height: 30px;
+    background-color: var(--scheme-5);
+    border-radius: 20px;
+    cursor: pointer;
+    transition-duration: .2s;
+}
+
+.toggleSwitch:has(input:disabled) {
+    opacity: 0.5;
+}
+
+.toggleSwitch::after {
+    content: "";
+    position: absolute;
+    height: 10px;
+    width: 10px;
+    left: 5px;
+    background-color: transparent;
+    border-radius: 50%;
+    transition-duration: .2s;
+    box-shadow: 5px 2px 7px rgba(8, 8, 8, 0.26);
+    border: 5px solid white;
+}
+
+.check-toggle:checked+.toggleSwitch::after {
+    transform: translateX(100%);
+    transition-duration: .2s;
+    background-color: var(--scheme-3);
+}
+
+/* Switch background change */
+.check-toggle:checked+.toggleSwitch {
+    background-color: var(--scheme-9);
+    transition-duration: .2s;
 }

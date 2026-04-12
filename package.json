@@ -1,18 +1,30 @@
 {
   "appId": "com.bluebird_browser.browser",
   "name": "bluebird_browser",
-  "displayName": "Bluebird Browser",
+  "displayName": "Browser",
   "productName": "Bluebird Browser",
   "publisher": "Bluebird IPE",
-  "version": "2.0.0-beta.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coder230-dev/bluebird_browser.git"
+  },
+  "version": "2.0.0-prerelease.1",
   "description": "",
   "main": "main.js",
   "build": {
     "directories": {
-      "buildResources": "assets/icons"
+      "buildResources": "images"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "coder230-dev",
+        "repo": "bluebird_browser",
+        "private": false
+      }
+    ],
     "mac": {
-      "icon": "pages/profilePages/images/Copilot_20251122_223052.png",
+      "icon": "icon.png",
       "extendInfo": {
         "CFBundleIdentifier": "com.bluebird_browser.browser",
         "CFBundleURLTypes": [
@@ -27,10 +39,10 @@
       }
     },
     "win": {
-      "icon": "pages/profilePages/images/Copilot_20251122_223052.png"
+      "icon": "icon.png"
     },
     "linux": {
-      "icon": "pages/profilePages/images/Copilot_20251122_223052.png"
+      "icon": "icon.png"
     }
   },
   "scripts": {

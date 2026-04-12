@@ -82,15 +82,13 @@ body {
 	margin: 0;
 	height: 100vh;
 	max-height: 100vh;
-	min-height: 100vh;
-	max-width: 100%;
 	margin: 0;
 	font-family: system-ui, sans-serif;
 	background: var(--scheme-1);
 	color: var(--scheme-10);
 	display: grid;
-	grid-template-areas: "titlebar" "bookmarks" "main";
-	grid-template-rows: auto 0 1fr;
+	grid-template-areas: "titlebar" "main";
+	grid-template-rows: auto 1fr;
 	flex-direction: column;
 	font-family: "Poppins";
 	overflow: hidden;
@@ -185,9 +183,7 @@ input {
 	margin: auto;
 }
 
-#bookmarkBar {
-	grid-area: bookmarks;
-}
+
 
 #top-part {
 	display: flex;
@@ -529,7 +525,7 @@ input {
 	align-items: center;
 	min-width: 35px;
 	min-height: 35px;
-	border-radius: 50%;
+	border-radius: 30px;
 	padding: 0 6px;
 	font-size: 0.8rem;
 	background: none;
@@ -541,10 +537,20 @@ input {
 	user-select: none;
 	color: var(--scheme-10);
 	z-index: 7;
+	font-family: "Montserrat";
+	gap: 4px;
+
+	.search-container button:focus {
+		outline: 1px solid var(--scheme-10);
+	}
 
 	&:active,
 	&.hover-force {
 		background: var(--scheme-4);
+		outline: 1px solid var(--scheme-10);
+	}
+	&.hover-force {
+		outline: none;
 	}
 }
 
@@ -573,6 +579,10 @@ input {
 .closeBtnR:hover::before,
 .tab-on-overflow-menu span button:hover::before {
 	opacity: 1;
+}
+
+.toolbar button:focus::before {
+	display: none;
 }
 
 .toolbar .drag-section {
@@ -678,6 +688,14 @@ input {
 			background: var(--scheme-2);
 		}
 	}
+
+	.overlay-popup.web-pop {
+		padding: 0;
+
+		.popup-content {
+			padding: 0;
+		}
+	}
 }
 
 #backdrop-for-pop:has(.overlay-popup.open) {
@@ -717,7 +735,8 @@ input {
 	}
 }
 
-.hbD {
+.hbD,
+.hidden {
 	display: none;
 }
 
@@ -765,6 +784,10 @@ input {
 .tab:hover {
 	background: var(--scheme-2);
 	backdrop-filter: brightness(30%);
+}
+
+.tab:focus {
+	outline: 1px solid var(--scheme-9);
 }
 
 /* Title truncation */
@@ -1224,6 +1247,12 @@ webview {
 .zoom-popup {
 	display: flex;
 	align-items: center;
+	background: var(--scheme-3);
+	color: var(--scheme-10) !important;
+
+	i {
+		color: var(--scheme-10) !important;
+	}
 
 	div {
 		display: flex;
@@ -1266,11 +1295,10 @@ webview {
 	font-size: 13px;
 	z-index: 1000;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-	max-height: none;
-	overflow: scroll;
+	overflow: scroll !important;
 	opacity: 0;
 	transition: 0.2s cubic-bezier(0.075, 0.82, 0.165, 1) !important;
-	max-height: calc(100% - 40px);
+	max-height: calc(100% - 40px) !important;
 
 	img {
 		height: 20px;
@@ -1325,6 +1353,7 @@ webview {
 
 .context-submenu {
 	margin-bottom: 20px;
+	max-height: calc(100% - 60px) !important;
 }
 
 .context-submenu,
@@ -1421,16 +1450,21 @@ webview {
 #top-right-btn {
 	background: var(--scheme-3);
 	color: var(--scheme-10);
+	padding: 12px 15px;
 	margin-right: 10px;
-	border-radius: 50%;
+	border-radius: 15px;
 	height: 35px;
-	width: 35px;
-	aspect-ratio: 1/1;
-	padding: 3px;
+	display: flex;
+	align-items: center;
+	gap: 3px;
 	-webkit-app-region: no-drag;
 	border: none;
-	font-size: 16px;
+	font-size: 12px;
+	font-family: "Montserrat";
 
+	&:focus {
+		outline: 1px solid var(--scheme-9);
+	}
 	i {
 		font-size: 16px;
 	}

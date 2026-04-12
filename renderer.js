@@ -144,7 +144,7 @@ function openDB() {
 				db.createObjectStore('savedPasswords', { autoIncrement: true });
 			}
 			if (!db.objectStoreNames.contains('zoomPercent')) {
-				db.createObjectStore('zoomPercent', { key: 'url' });
+				db.createObjectStore('zoomPercent', { keyPath: 'url' });
 			}
 		};
 
@@ -247,6 +247,148 @@ window.electronAPI.onAppVersion((version) => {
 	appVersion = version
 });
 
+let updateState = 'idle';
+let updateInfo = null;
+
+function openPrivateTab(url = 'pages/new-tab/index.html') {
+	createTab(url, { private: true, insertAfterActive: true });
+}
+
+async function clearBrowsingData() {
+	if (!window.electronAPI?.clearBrowsingData) return false;
+	return await window.electronAPI.clearBrowsingData();
+}
+
+function formatReleaseNotes(releaseNotes) {
+	if (!releaseNotes) {
+		return '<p>No release notes available.</p>';
+	}
+	if (typeof releaseNotes === 'string') {
+		return releaseNotes
+			.trim()
+			.split(/\r?\n/)
+			.filter(line => line.trim().length)
+			.map(line => `<p>${line}</p>`)
+			.join('');
+	}
+	if (Array.isArray(releaseNotes)) {
+		return releaseNotes.map(item => `<p>${String(item)}</p>`).join('');
+	}
+	if (typeof releaseNotes === 'object') {
+		return `<pre>${JSON.stringify(releaseNotes, null, 2)}</pre>`;
+	}
+	return `<p>${String(releaseNotes)}</p>`;
+}
+
+function showWebPopup(title, url, iframe) {
+	const html = `
+		${title ? `<div class="popup-header"><h1>${title}</h1></div>` : ``}
+		${iframe ? `<iframe border="0" src="${url}"></iframe>` : `<webview src="${url}"></webview>`}
+	`
+	const pop = createOverlayPopup(html, '800px', '800px', true);
+	pop.classList.add('web-pop')
+}
+
+function showPopup(title, contentHtml, actions = []) {
+	const html = `
+	${title ? `<div class="popup-header"><h1>${title}</h1></div>` : ``}
+		<div class="popup-body">${contentHtml}</div>
+		<div class="popup-actions"></div>
+	`;
+	const popup = createOverlayPopup(html, '560px', 'auto');
+	const actionsContainer = popup.querySelector('.popup-actions');
+	if (!actionsContainer) return popup;
+	actions.forEach(action => {
+		const button = document.createElement('button');
+		button.textContent = action.label || 'Close';
+		button.className = action.primary ? 'popup-action-btn primary' : 'popup-action-btn';
+		button.onclick = () => {
+			if (action.onClick) action.onClick();
+			popup.classList.remove('open');
+			setTimeout(() => {
+				const backdrop = document.getElementById('backdrop-for-pop');
+				if (backdrop) backdrop.remove();
+			}, 300);
+		};
+		actionsContainer.appendChild(button);
+	});
+	return popup;
+}
+
+function setUpdateButtonState(state, info = null) {
+	updateState = state;
+	updateInfo = info;
+	if (!updateBtn) return;
+	if (state === 'idle' || state === 'error') {
+		updateBtn.classList.add('hidden');
+		updateBtn.removeAttribute('data-state');
+		updateBtn.title = 'App updates';
+		return;
+	}
+	updateBtn.classList.remove('hidden');
+	updateBtn.setAttribute('data-state', state);
+	const iconName = state === 'downloaded' ? 'restart_alt' : 'system_update';
+	updateBtn.innerHTML = `<i class="material-symbols-rounded">${iconName}</i><span class="update-badge"></span>`;
+	updateBtn.title = state === 'downloaded' ? 'Restart to install update' : 'Update available';
+}
+
+function showUpdateDetails() {
+	if (!updateInfo) {
+		return;
+	}
+	const versionLabel = updateInfo.version ? `Version ${updateInfo.version}` : 'New version available';
+	const notesHtml = formatReleaseNotes(updateInfo.releaseNotes);
+	const statusCopy = updateState === 'downloaded'
+		? 'The update has finished downloading and is ready to install.'
+		: 'The update is downloading in the background. Once completed, the button will become Restart to Update.';
+	showPopup(`${versionLabel} is available`, `
+		<div class="update-popup-copy">
+			<p>${statusCopy}</p>
+			<div class="update-notes-wrapper">
+				${notesHtml}
+			</div>
+		</div>
+	`, [
+		{
+			label: updateState === 'downloaded' ? 'Restart to Update' : 'Close',
+			primary: updateState === 'downloaded',
+			onClick: () => {
+				if (updateState === 'downloaded') {
+					window.electronAPI?.installUpdate?.();
+				}
+			}
+		}
+	]);
+}
+
+window.electronAPI?.onUpdateAvailable((data) => {
+	setUpdateButtonState('available', data);
+});
+
+window.electronAPI?.onUpdateDownloaded((data) => {
+	setUpdateButtonState('downloaded', data);
+});
+
+window.electronAPI?.onUpdateError((error) => {
+	console.warn('Update error:', error?.message || error);
+	if (updateBtn) {
+		updateBtn.title = `Update error: ${error?.message || 'unknown'}`;
+	}
+});
+
+window.electronAPI?.onUpdateChecking(() => {
+	if (updateBtn) {
+		updateBtn.title = 'Checking for updates...';
+	}
+});
+
+window.electronAPI?.onUpdateDownloadProgress((progress) => {
+	if (updateState === 'available' && updateBtn) {
+		const percent = Math.round(progress?.percent || 0);
+		updateBtn.title = `Downloading update… ${percent}%`;
+	}
+});
+
 window.windowAPI.onFocusChange(({ focus }) => {
 	const body = document.body
 	if (focus) {
@@ -258,12 +400,11 @@ window.windowAPI.onFocusChange(({ focus }) => {
 
 
 document.addEventListener('DOMContentLoaded', async function () {
+	if (!await loadSetting('defaultZoom')) {
+		updateSetting('defaultZoom', 100)
+	}
 	const allSettings = await loadAllSettings();
 
-	if (!localStorage.getItem(`firstTime-${activeProfile}`)) {
-		localStorage.setItem(`firstTime-${activeProfile}`, String(true));
-		displayNotification('Welcome to Bluebird Browser.', 'waving_hand')
-	}
 	// Helper: convert IDBRequest → Promise
 	function idbRequest(req) {
 		return new Promise((resolve, reject) => {
@@ -509,7 +650,7 @@ if (profileInfoEl) {
 			function: () => {
 				window.electronAPI?.openAppPage?.(
 					'pages/profilePages/profileManager.html',
-					500,
+					700,
 					700,
 					'Default'
 				);
@@ -736,6 +877,17 @@ async function loadPermission(url, permission) {
 	return res?.decision;
 }
 
+async function saveZoomFactor(url, factor) {
+	if (!url || typeof factor !== 'number') return;
+	await dbSet('zoomPercent', { url: getBaseURL(url), factor });
+}
+
+async function loadZoomFactor(url) {
+	if (!url) return undefined;
+	const record = await dbGet('zoomPercent', getBaseURL(url));
+	return typeof record?.factor === 'number' ? record.factor : undefined;
+}
+
 async function loadBrowserSettings() {
 	const settingsArray = await loadAllSettings();
 	if (!settingsArray) {
@@ -747,7 +899,7 @@ async function loadBrowserSettings() {
 		settings[key] = value;
 	});
 
-	setZoomSetting();
+	await setZoomSetting();
 
 	// Theme
 	let theme = settings.theme;
@@ -783,6 +935,8 @@ async function loadBrowserSettings() {
 	await window.battery.getInfo().then((info) => {
 		updateBatteryUI(info.level, info.charging)
 	});
+
+
 }
 
 function getBatteryIcon(level, isCharging) {
@@ -933,13 +1087,17 @@ function hexToRgbBitwise(hex) {
 }
 
 window.addEventListener("message", (event) => {
-	if (event.origin !== window.origin) return;
+	if (event.origin !== window.origin && event.origin !== 'null' && event.origin !== '') return;
 
 	if (event.data.updateSettings) {
+		if (typeof event.data.key !== 'undefined') {
+			window.api?.settings?.save({ [event.data.key]: event.data.value }).catch(() => { });
+		}
 		try {
+			console.log('loading settings');
 			loadBrowserSettings();
 		} catch (e) {
-			prompt(e)
+			console.error(e);
 		}
 		console.log("Settings updated:");
 	} else if (event.data.removeTab) {
@@ -948,6 +1106,11 @@ window.addEventListener("message", (event) => {
 		sendMediaListToSidebar();
 	} else if (event.data.type === 'media-control') {
 		handleMediaControl(event.data);
+	} else if (event.data.type === 'add-bookmark') {
+		const bookmark = event.data.bookmark;
+		if (bookmark?.url) {
+			addBookmark(activeProfile || 'Default', bookmark, false);
+		}
 	} else if (event.data.type === 'go-to-tab') {
 		setActiveTab(event.data.tabId);
 	} else if (event.data.type === 'get-download-list') {
@@ -959,12 +1122,12 @@ window.addEventListener("message", (event) => {
 
 // Media Manager Functions
 function sendMediaListToSidebar() {
-	const mediaTabs = tabs.filter(tab => tab.media && tab.media.isPlaying).map(tab => ({
+	const mediaTabs = tabs.filter(tab => tab.isPlaying).map(tab => ({
 		tabId: tab.id,
 		title: tab.title,
 		url: tab.url,
 		favicon: tab.favicon,
-		isPlaying: tab.media.isPlaying
+		isPlaying: tab.isPlaying
 	}));
 
 	// Send to sidebar iframe
@@ -1051,6 +1214,12 @@ window.electronAPI?.onSwitchProfile?.(async (profileName) => {
 	console.log('Switched to profile:', profileName);
 	activeProfile = profileName;
 
+	if (!localStorage.getItem(`firstTime-${activeProfile}`)) {
+		localStorage.setItem(`firstTime-${activeProfile}`, String(true));
+		displayNotification('Welcome to Bluebird Browser.', 'waving_hand');
+		openSidebarApp('pages/settings/index.html?welcome=true', '👋 Welcome to Bluebird Browser!', true)
+	}
+
 	const profileInfo = document.getElementById('profile-info');
 	if (profileInfo) {
 		profileInfo.innerHTML = `
@@ -1118,16 +1287,17 @@ const bookmarkBtn = document.getElementById('bookmark');
 const newWindowBtn = document.getElementById('new-window');
 
 const zoomBtn = document.getElementById('zoomBtn')
+const searchModeBtn = document.getElementById('searchModeOpt')
 const bookmarkManagerBtn = document.getElementById('bookmark-manager')
 const historyManager = document.getElementById('btnHistory')
 const btnSettings = document.getElementById('btnSettings')
 const btnPrint = document.getElementById('btnPrint')
 const btnDownload = document.getElementById('btnDownloads')
 const btnShare = document.getElementById('btnShare')
-const btnQRcode = document.getElementById('btnQRCode')
 const btnDevTools = document.getElementById('btnDevTools')
-const btnMediaManager = document.getElementById('btnMediaManager')
 const btnDownloadManager = document.getElementById('btnDownloadManager')
+const btnPrivacy = document.getElementById('btnPrivacy')
+const updateBtn = document.getElementById('update-btn')
 
 // Global drag state for tab reordering
 const dragState = {
@@ -1279,16 +1449,52 @@ setTimeout(function () {
 	if (bookmarkBtn) bookmarkBtn.onclick = () => { addBookmark() };
 	if (newWindowBtn) newWindowBtn.onclick = () => { const profile = activeProfile || 'Default'; if (window.electronAPI?.newWindow) { window.electronAPI.newWindow(profile, 'new-window'); } else if (window.api?.window?.new) { window.api.window.new(profile, 'new-window'); } else { console.warn('No window.new API exposed'); } };
 	if (zoomBtn) { zoomBtn.onclick = async () => { const active = getActive(); if (active?.webview) { await showZoomControls(active.webview, active.webview.getZoomFactor()); } } }
+	if (searchModeBtn) {
+		searchModeBtn.onclick = () => {
+			createContextMenu([
+				{ icType: 'GF', icon: 'bookmarks', name: 'Bookmarks', category: 'Set Search Mode', function: () => { startSearchMode('bookmark') } },
+				{ icType: 'GF', icon: 'history', name: 'History', category: 'Set Search Mode', function: () => { startSearchMode('history') } }
+			], searchModeBtn)
+		}
+	}
 	if (bookmarkManagerBtn) bookmarkManagerBtn.onclick = () => { openSidebarApp('pages/managers/index.html?manager=bookmarks', true) };
 	if (historyManager) historyManager.onclick = () => { openSidebarApp('pages/managers/index.html?manager=history', true) };
-	if (btnSettings) btnSettings.onclick = () => { openSidebarApp('pages/settings/index.html', 'Settings', true) };
+	if (btnSettings) btnSettings.onclick = () => { openSidebarApp('pages/settings/index.html', 'Settings', false) };
 	if (btnPrint) btnPrint.onclick = () => { window.print(); };
 	if (btnDownload) btnDownload.onclick = () => { console.log("Downloads opened"); };
 	if (btnShare) btnShare.onclick = () => { const active = getActive(); if (active) { setUpshareMenu(active.url, active.name); } };
-	if (btnQRcode) btnQRcode.onclick = () => { console.log("QR Code shown"); };
-	if (btnDevTools) btnDevTools.onclick = () => { getActive()?.webview.openDevTools(); };
-	if (btnMediaManager) btnMediaManager.onclick = () => { openSidebarApp('pages/managers/media.html', 'Media Manager', true) };
+	if (btnPrivacy) btnPrivacy.onclick = () => {
+		showPopup('Privacy Controls', `
+			<p>Open a private tab or clear browsing data for this session.</p>
+		`, [
+			{
+				label: 'New Private Tab',
+				primary: true,
+				onClick: () => openPrivateTab('pages/new-tab/index.html')
+			},
+			{
+				label: 'Clear Browsing Data',
+				onClick: async () => {
+					const result = await clearBrowsingData();
+					if (result) {
+						displayNotification('Browsing data cleared.', 'privacy_tip');
+					} else {
+						displayNotification('Could not clear browsing data.', 'warning');
+					}
+				}
+			}
+		]);
+	};
 	if (btnDownloadManager) btnDownloadManager.onclick = () => { openSidebarApp('pages/managers/download.html', 'Download Manager', true) };
+	if (updateBtn) {
+		updateBtn.onclick = () => {
+			if (updateState === 'downloaded') {
+				window.electronAPI?.installUpdate?.();
+			} else if (updateState === 'available') {
+				showUpdateDetails();
+			}
+		};
+	}
 }, 300)
 
 
@@ -1371,24 +1577,6 @@ async function runContextAction(type, payload = {}) {
 		viewFrameSource: () => webview?.openDevTools(),
 
 		// ─────────────────────────────────────────────
-		// MEDIA ACTIONS
-		// ─────────────────────────────────────────────
-		togglePlay: () => webview?.executeJavaScript(`document.activeElement?.paused ? document.activeElement.play() : document.activeElement.pause()`),
-		toggleMute: () => webview?.executeJavaScript(`document.activeElement.muted = !document.activeElement.muted`),
-		toggleLoop: () => webview?.executeJavaScript(`document.activeElement.loop = !document.activeElement.loop`),
-		togglePiP: () => webview?.executeJavaScript(`
-            if (document.pictureInPictureElement) {
-                document.exitPictureInPicture();
-            } else {
-                document.activeElement?.requestPictureInPicture?.();
-            }
-        `),
-		toggleVideoFullscreen: () => webview?.executeJavaScript(`if (document.activeElement && document.activeElement.requestFullscreen) document.activeElement.requestFullscreen()`),
-		setPlaybackRate: ({ rate }) => webview?.executeJavaScript(`if (document.activeElement && document.activeElement.playbackRate !== undefined) document.activeElement.playbackRate = ${rate}`),
-		seekBackward: ({ seconds }) => webview?.executeJavaScript(`if (document.activeElement && document.activeElement.currentTime !== undefined) document.activeElement.currentTime -= ${seconds}`),
-		seekForward: ({ seconds }) => webview?.executeJavaScript(`if (document.activeElement && document.activeElement.currentTime !== undefined) document.activeElement.currentTime += ${seconds}`),
-
-		// ─────────────────────────────────────────────
 		// ZOOM
 		// ─────────────────────────────────────────────
 		zoomIn,
@@ -1400,7 +1588,7 @@ async function runContextAction(type, payload = {}) {
 		// ─────────────────────────────────────────────
 		findInPage: () => openFindPopup(addressMore),
 		toggleFullscreen,
-		openSettings: () => openSidebarApp('pages/settings/index.html', 'Settings', true),
+		openSettings: () => openSidebarApp('pages/settings/index.html', 'Settings', false),
 
 		// Screenshot
 		screenshotTab: async () => {
@@ -1422,6 +1610,8 @@ async function runContextAction(type, payload = {}) {
 			favicon: null,
 			createdAt: Date.now()
 		}),
+
+		searchOpenBookmark: () => { startSearchMode('bookmark') },
 
 		// File / Location
 		openFile,
@@ -1663,13 +1853,6 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 		},
 
 		{
-			icon: 'view_sidebar',
-			icType: 'GF',
-			name: 'Show/Hide Bookmarks Bar',
-			function: () => { updateSetting('showBookmarksBar', false ? true : false); window.postMessage({ updateSettings: true }, "*"); }
-		},
-
-		{
 			icon: 'settings',
 			icType: 'GF',
 			name: 'Browser Settings',
@@ -1680,23 +1863,17 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 	createContextMenu(items, undefined, clickX, clickY);
 });
 
-function toggleBookmarkBar() {
-	const current = loadSetting('showBookmarksBar')
-	updateSetting('showBookmarksBar', !current);
-	window.postMessage({ updateSettings: true }, "*");
-}
-
-window.permissionsAPI.onRequest(async ({ origin, permission }) => {
+window.permissionsAPI.onRequest(async ({ requestId, origin, permission }) => {
 	const existing = await loadPermission(origin, permission);
 	if (existing === 'allow') {
-		e.request.allow();
+		window.permissionsAPI.respond(requestId, origin, permission, true);
 		return;
 	} else if (existing === 'deny') {
-		e.request.deny();
+		window.permissionsAPI.respond(requestId, origin, permission, false);
 		return;
 	}
 
-	content = `
+	const content = `
 		<h4>Requesting Permission</h4>
 		<p>${getBaseURL(origin)} is asking for ${permission} permission.</p>
 		<div class="flex" style="gap: 10px;">
@@ -1705,27 +1882,28 @@ window.permissionsAPI.onRequest(async ({ origin, permission }) => {
 			<button id="allowAlways">Allow Always</button>
 			<button id="never">Never</button>
 		</div>
-		`
-	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'), undefined, undefined)
-	popup.classList.add('permission-prompt')
-	document.getElementById('denyPerm').onclick = () => {
-		e.request.deny()
-		popup.remove()
-	}
+		`;
+	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'), undefined, undefined);
+	popup.classList.add('permission-prompt');
+	document.getElementById('denyPerm').onclick = async () => {
+		await savePermission(origin, permission, 'deny');
+		window.permissionsAPI.respond(requestId, origin, permission, false);
+		popup.remove();
+	};
 	document.getElementById('allowOnce').onclick = () => {
-		e.request.allow()
-		popup.remove()
-	}
+		window.permissionsAPI.respond(requestId, origin, permission, true);
+		popup.remove();
+	};
 	document.getElementById('allowAlways').onclick = async () => {
 		await savePermission(origin, permission, 'allow');
-		e.request.allow()
-		popup.remove()
-	}
+		window.permissionsAPI.respond(requestId, origin, permission, true);
+		popup.remove();
+	};
 	document.getElementById('never').onclick = async () => {
 		await savePermission(origin, permission, 'deny');
-		e.request.deny()
-		popup.remove()
-	}
+		window.permissionsAPI.respond(requestId, origin, permission, false);
+		popup.remove();
+	};
 });
 
 function getAllTabs() { return tabs; }
@@ -1773,6 +1951,7 @@ function addBookmark(profile = activeProfile, bm, edit = true) {
 		const exists = list.find(x => x.url === bm.url);
 		const updated = exists ? list.map(x => x.url === bm.url ? bm : x) : [bm, ...list];
 		localStorage.setItem(bookmarksKey(profile), JSON.stringify(updated.slice(0, 500)));
+
 	} catch (error) {
 		alert("Couldn't add bookmark")
 		console.error('addBookmark failed', error, profile, bm);
@@ -1793,6 +1972,7 @@ function addBookmark(profile = activeProfile, bm, edit = true) {
 		}
 	}
 }
+
 function editBookmark(bookmarkInfo, profile = activeProfile) {
 	const content = `
     <div style="display: flex; gap: 20px; align-items: center;">
@@ -1857,6 +2037,7 @@ function editBookmark(bookmarkInfo, profile = activeProfile) {
 		pop.classList.remove('open');
 		setTimeout(() => {
 			document.getElementById('backdrop-for-pop')?.remove();
+
 		}, 500);
 	};
 }
@@ -2153,16 +2334,19 @@ async function updateTabElement(tab) {
 }
 
 function showTabLeftInfo(info) {
+	if (!info || !info.tabElement) return;
 	setTimeout(() => {
 		const active = getActive();
 		const existing = document.getElementById("active-overflow-tag");
 
-		if (info.tabElement.dataset.visible === "visible") {
+		if (!active) return;
+		const visibility = info.tabElement?.dataset?.visible;
+		if (visibility === "visible") {
 			if (existing) existing.remove();
 			return;
 		}
 
-		if (active.id !== info.id || info.tabElement.dataset.visible !== "hidden") {
+		if (active.id !== info.id || visibility !== "hidden") {
 			return;
 		}
 
@@ -2238,11 +2422,12 @@ function createTab(url, opts = {}) {
 	wv.src = url;
 	wv.id = shortId;
 
+	const isPrivateTab = Boolean(opts.private);
 	wv.setAttribute("preload", "preload.js");
 	wv.setAttribute('allowpopups', 'false');
 	wv.setAttribute('allow', 'allow="autoplay; picture-in-picture"');
 	wv.setAttribute('webpreferences', 'contextIsolation=yes, nativeWindowOpen=yes');
-	wv.setAttribute('partition', `persist:${activeProfile}`);
+	wv.setAttribute('partition', isPrivateTab ? `temp:private-${shortId}` : `persist:${activeProfile}`);
 
 	const userAgent = isMac
 		? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
@@ -2276,16 +2461,8 @@ function createTab(url, opts = {}) {
 		audio: false,
 		screenshot: null,
 		tabElement: null,
-		media: {
-			isPlaying: false,
-			duration: 0,
-			currentTime: 0,
-			title: '',
-			thumbnail: ''
-		}
-	};
-
-	// Determine insertion index
+		isPrivate: isPrivateTab,
+	}
 	let insertIndex;
 	if (typeof opts.index === 'number') {
 		insertIndex = Math.max(0, Math.min(opts.index, tabs.length));
@@ -2299,8 +2476,8 @@ function createTab(url, opts = {}) {
 	// Insert into tabs array at insertIndex
 	tabs.splice(insertIndex, 0, tab);
 
-	// Persist open tabs list
-	localStorage.setItem('tabsOpen', JSON.stringify(tabs.map(t => ({
+	// Persist open tabs list, but never save private tabs.
+	localStorage.setItem('tabsOpen', JSON.stringify(tabs.filter(t => !t.isPrivate).map(t => ({
 		id: t.id,
 		shortId: t.shortId,
 		url: t.url,
@@ -2333,7 +2510,8 @@ function createTab(url, opts = {}) {
 
 	// --- Webview Event Wiring ---
 	wv.addEventListener("dom-ready", () => {
-		showTabLeftInfo(getActive());
+		const active = getActive();
+		if (active) showTabLeftInfo(active);
 
 		wv.executeJavaScript(`
 			window.alert = (msg) => {
@@ -2360,8 +2538,9 @@ function createTab(url, opts = {}) {
 	});
 
 	// --- did-stop-loading ---
-	wv.addEventListener('did-stop-loading', () => {
-		showTabLeftInfo(getActive());
+	wv.addEventListener('did-stop-loading', async () => {
+		const active = getActive();
+		if (active) showTabLeftInfo(active);
 
 		if (tab.spinner) tab.spinner.style.display = 'none';
 
@@ -2374,7 +2553,6 @@ function createTab(url, opts = {}) {
 		setTimeout(() => {
 			addHistoryEntry(activeProfile || 'Default', entry);
 		}, 1000);
-
 	});
 
 	// --- did-start-navigation ---
@@ -2395,7 +2573,8 @@ function createTab(url, opts = {}) {
 
 	// --- did-navigate ---
 	wv.addEventListener('did-navigate', (e) => {
-		showTabLeftInfo(getActive());
+		const active = getActive();
+		if (active) showTabLeftInfo(active);
 
 		if (!e.isMainFrame) return;
 
@@ -2409,7 +2588,8 @@ function createTab(url, opts = {}) {
 
 	// --- did-navigate-in-page ---
 	wv.addEventListener('did-navigate-in-page', (e) => {
-		showTabLeftInfo(getActive());
+		const active = getActive();
+		if (active) showTabLeftInfo(active);
 
 		if (!e.isMainFrame) return;
 
@@ -2422,8 +2602,9 @@ function createTab(url, opts = {}) {
 	});
 
 	// --- did-finish-load ---
-	wv.addEventListener('did-finish-load', () => {
-		showTabLeftInfo(getActive());
+	wv.addEventListener('did-finish-load', async () => {
+		const active = getActive();
+		if (active) showTabLeftInfo(active);
 
 		tab.url = wv.getURL();
 		if (id === activeTab) updateAddressBar(tab.url);
@@ -2434,8 +2615,11 @@ function createTab(url, opts = {}) {
 			console.warn('Screenshot capture failed for tab:', tab.dataset.id, err);
 		});
 
-		if (zoomSetting) {
-			wv.setZoomFactor(zoomSetting || 1);
+		const savedZoom = await loadZoomFactor(wv.getURL()) || loadSetting('defaultZoom');
+		if (typeof savedZoom === 'number') {
+			wv.setZoomFactor(savedZoom);
+		} else if (typeof zoomSetting === 'number') {
+			wv.setZoomFactor(zoomSetting || loadSetting('defaultZoom'));
 		}
 
 		updateTabElement(tab);
@@ -2457,44 +2641,15 @@ function createTab(url, opts = {}) {
 	// --- media-started-playing ---
 	wv.addEventListener('media-started-playing', () => {
 		tab.audio = true;
-		tab.media.isPlaying = true;
+		tab.isPlaying = true;
 		updateTabElement(tab);
-		updateMediaManager();
 	});
 
 	// --- media-paused ---
 	wv.addEventListener('media-paused', () => {
-		tab.media.isPlaying = false;
+		tab.isPlaying = false;
 		tab.audio = false;
 		updateTabElement(tab);
-		updateMediaManager();
-	});
-
-	// --- permissionrequest ---
-	wv.addEventListener("permissionrequest", e => {
-		e.preventDefault();
-
-		const content = `
-			<h4>Requesting Permission</h4>
-			<p>${getBaseURL(url)} is asking ${e.permission} permissions.</p>
-			<div class="flex">
-				<button id="denyPerm">Deny</button>
-				<button id="allowPerm">Allow</button>
-			</div>
-		`;
-
-		const popup = createPopup(content, document.getElementById('viewWebsiteInfo'));
-		popup.classList.add('permission-prompt');
-
-		document.getElementById('denyPerm').onclick = () => {
-			e.request.deny();
-			popup.remove();
-		};
-
-		document.getElementById('allowPerm').onclick = () => {
-			e.request.allow();
-			popup.remove();
-		};
 	});
 
 	// --- dom-ready (second listener) ---
@@ -2534,6 +2689,43 @@ function createTab(url, opts = {}) {
 window.confirm = () => {
 	console.log('Confirm')
 }
+
+function loadErrorPage(webview, code, desc = "") {
+	const html = `
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: sans-serif;
+                    background: var(--scheme-3);
+                    color: var(--text-color);
+                    padding: 40px;
+                }
+                .error-box {
+                    max-width: 500px;
+                    margin: auto;
+                    padding: 20px;
+                    border-radius: 12px;
+                    background: var(--scheme-2);
+                    border: 1px solid var(--scheme-9);
+                }
+                h1 { margin: 0 0 10px; }
+                p { opacity: 0.8; }
+            </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>Error ${code}</h1>
+                <p>${desc || "This page could not be loaded."}</p>
+                <button onclick="location.reload()">Reload</button>
+            </div>
+        </body>
+        </html>
+    `;
+
+	webview.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+}
+
 
 function attachHistoryListeners(webview, shortId, info) {
 	const record = () => {
@@ -2662,15 +2854,6 @@ function setActiveTab(id) {
 
 function getActive() {
 	return tabs.find(t => t.id === activeTab);
-}
-
-document.getElementById('bookmarks-bar').oncontextmenu = (e) => {
-	e.preventDefault()
-	createContextMenu([
-		{ icType: 'GF', icon: 'hide', name: 'Hide Bookmarks Bar', category: 'Bookmark Bar', function: () => { updateSetting('showBookmarksBar', false); window.postMessage({ updateSettings: true }, "*"); } },
-		{ icType: 'GF', icon: 'settings', name: 'Bookmark Bar Settings', category: 'Bookmark Bar' },
-		{ icType: 'GF', icon: 'bookmark_manager', name: 'Bookmark Manager', category: 'Manager', function: () => { bookmarkManagerBtn.click() } }
-	], null, e.x, e.y)
 }
 
 // --- Bookmarks ---
@@ -2832,7 +3015,7 @@ function updateOverflow() {
 	overflowBtn.visibleTabs = visibleTabs;
 }
 
-window.addEventListener("resize", updateOverflow);
+// window.addEventListener("resize", updateOverflow);
 
 new MutationObserver(updateOverflow).observe(tabsContainer, {
 	childList: true,
@@ -3416,7 +3599,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					// Create submenu element appended to body so it can be positioned outside the button
 					const subMenu = document.createElement('div');
 					subMenu.classList.add('context-submenu');
-					subMenu.style.position = 'fixed';
+					subMenu.style.position = 'absolute';
 					subMenu.style.zIndex = '1001';
 					subMenu.style.backdropFilter = 'blur(20px)';
 					subMenu.style.opacity = '0';
@@ -3559,6 +3742,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 				try { webview.addEventListener('mousedown', removeContextMenus); } catch (e) { }
 			});
 		}, 0);
+		document.querySelector('.context-item').focus();
 	}, 50);
 }
 
@@ -3642,7 +3826,7 @@ async function showZoomControls(webview, zoomSize) {
 		</div>
 	`;
 
-	dbSet('zoomPercent', { [getBaseURL(webview.getURL())]: percent });
+	saveZoomFactor(webview.getURL(), currentZoom).catch(() => { });
 
 	clearTimeout(zoomPopupTimeout);
 
@@ -4019,14 +4203,13 @@ async function zoomIn() {
 	const current = await a.webview.getZoomFactor();
 	const next = Math.min(3, current + 0.1);
 
-	a.webview.setZoomFactor(next);
+	await a.webview.setZoomFactor(next);
+	await saveZoomFactor(a.webview.getURL(), next).catch(() => { });
 
-	// Wait for layout to settle after zoom
 	requestAnimationFrame(() => {
 		showZoomControls(a.webview, next);
 	});
 }
-
 
 async function zoomOut() {
 	const a = getActive();
@@ -4035,21 +4218,24 @@ async function zoomOut() {
 	const current = await a.webview.getZoomFactor();
 	const next = Math.max(0.3, current - 0.1);
 
-	a.webview.setZoomFactor(next);
+	await a.webview.setZoomFactor(next);
+	await saveZoomFactor(a.webview.getURL(), next).catch(() => { });
+
 	requestAnimationFrame(async () => {
 		await showZoomControls(a.webview, a.webview.getZoomFactor());
-	})
+	});
 }
 
 async function zoomReset() {
 	const a = getActive();
 	if (!a?.webview) return;
-	a.webview.setZoomFactor((await loadSetting('website.dZoomValue') || 1) / 100);
-	const z = (typeof a.webview.getZoomFactor === 'function' ? a.webview.getZoomFactor() : 1) - 0.1;
+	const defaultFactor = (await loadSetting('website.dZoomValue') || 100) / 100;
+	await a.webview.setZoomFactor(defaultFactor);
+	await saveZoomFactor(a.webview.getURL(), defaultFactor).catch(() => { });
 
 	requestAnimationFrame(async () => {
-		await showZoomControls(a.webview, a.webview.getZoomFactor())
-	})
+		await showZoomControls(a.webview, a.webview.getZoomFactor());
+	});
 }
 
 function translatePage() { const a = getActive(); if (!a?.url) return; const u = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(a.url)}`; createTab(u); }
@@ -4323,6 +4509,10 @@ async function openMainContextMenu(elementClicked = moreBtn, x = 0, y = 0) {
 			icon: 'bookmark', icType: 'GF', name: 'Bookmarks & Saved Pages', category: 'Lists',
 			submenu: [
 				{
+					icon: 'collections_bookmark', icType: 'GF', name: 'Manage Bookmarks', category: "Manage",
+					function: () => openSidebarApp('pages/managers/index.html?manager=bookmarks', 'Manager', true)
+				},
+				{
 					icon: 'star', icType: 'GF', name: 'Bookmark this page', shortcut: 'Ctrl+D', category: "Add",
 					function: () => {
 						const a = getActive();
@@ -4346,11 +4536,6 @@ async function openMainContextMenu(elementClicked = moreBtn, x = 0, y = 0) {
 						function: () => createTab(b.url)
 					};
 				}),
-
-				{
-					icon: 'collections_bookmark', icType: 'GF', name: 'Manage Bookmarks', category: "Manage",
-					function: () => openSidebarApp('pages/managers/index.html?manager=bookmarks', 'Manager', true)
-				}
 			]
 		},
 
@@ -4390,11 +4575,13 @@ async function openMainContextMenu(elementClicked = moreBtn, x = 0, y = 0) {
 			]
 		},
 
-		{ icon: 'settings', icType: 'GF', name: 'Settings', shortcut: 'Ctrl+,', category: 'App', function: () => openSidebarApp('pages/settings/index.html', 'Settings', true) },
+		{ icon: 'settings', icType: 'GF', name: 'Settings', shortcut: 'Ctrl+,', category: 'App', function: () => openSidebarApp('pages/settings/index.html', 'Settings', false) },
 	];
 
 	createContextMenu(items, elementClicked, x, y);
 }
+
+let searchMode
 
 // Search and autocomplete
 function performSearch(input) {
@@ -4790,21 +4977,101 @@ async function fetchDuckDuckGoSuggestions(query) {
 	}
 }
 
+function startSearchMode(mode) {
+	let viewWebsiteInfo = document.getElementById('viewWebsiteInfo');
+
+	if (mode === 'bookmark') {
+		address.value = '';
+		address.placeholder = 'Search for Bookmarks';
+		address.focus();
+		viewWebsiteInfo.innerHTML = 'bookmarks';
+		searchMode = 'bookmark';
+	}
+
+	if (mode === 'history') {
+		address.value = '';
+		address.placeholder = 'Search History';
+		address.focus();
+		viewWebsiteInfo.innerHTML = 'history';
+		searchMode = 'history';
+	}
+
+	address.onblur = () => {
+		address.placeholder = 'Search or enter URL address';
+		viewWebsiteInfo.innerHTML = 'web';
+		searchMode = null;
+		address.onblur = null;
+	};
+}
+
+
 async function buildSuggestions(queryRaw) {
 	const q = (queryRaw || '').trim();
 	if (!q) return [];
-	const results = [];
+
 	const lower = q.toLowerCase();
+
+	// -----------------------------------------
+	// 1. EXCLUSIVE SEARCH MODES (bookmark / history)
+	// -----------------------------------------
+
+	if (searchMode === 'bookmark') {
+		const bookmarks = getBookmarksProfile(activeProfile || 'Default') || [];
+		const results = [];
+
+		for (const b of bookmarks) {
+			if (!b || !b.url) continue;
+			const title = (b.title || b.url).toString();
+			if (title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower)) {
+				results.push({ text: b.url, label: title, type: 'bookmark', sub: b.url });
+			}
+		}
+
+		// If bookmark mode found results → return ONLY those
+		if (results.length > 0) return results;
+		// Otherwise fall through to full omnibox
+	}
+
+	if (searchMode === 'history') {
+		const history = await getHistoryProfile(100) || [];
+		const results = [];
+
+		for (const h of history) {
+			if (!h || !h.url) continue;
+			const title = (h.title || h.url).toString();
+			if (title.toLowerCase().includes(lower) || h.url.toLowerCase().includes(lower)) {
+				results.push({ text: h.url, label: title, type: 'history', sub: h.url });
+			}
+		}
+
+		// If history mode found results → return ONLY those
+		if (results.length > 0) return results;
+		// Otherwise fall through to full omnibox
+	}
+
+	// -----------------------------------------
+	// 2. FULL OMNIBOX (fallback or no searchMode)
+	// -----------------------------------------
+
+	return await buildNormalSuggestions(q, lower);
+}
+
+async function buildNormalSuggestions(q, lower) {
+	const results = [];
+
+	// Prefixes
 	let userPrefixes = [];
 	try { userPrefixes = await getUserPrefixes(); } catch (err) { userPrefixes = []; }
 	const prefixes = [...getBuiltInPrefixes(), ...(userPrefixes || [])];
 	prefixes.sort((a, b) => b.prefix.length - a.prefix.length);
+
 	const matchedPrefix = prefixes.find(p => q.startsWith(p.prefix));
 	if (matchedPrefix) {
 		const rawAfter = q.slice(matchedPrefix.prefix.length);
 		if (rawAfter === '') return [];
 		const after = rawAfter.trim();
 		const val = (matchedPrefix.value || '').toLowerCase();
+
 		if (val === 'actions') {
 			const actionResults = buildActionSuggestions(after);
 			if (actionResults.length) return actionResults;
@@ -4826,6 +5093,8 @@ async function buildSuggestions(queryRaw) {
 			return [{ text: url, label: matchedPrefix.name ? `${matchedPrefix.name}: ${after}` : url, type: 'custom', sub: matchedPrefix.name || 'Custom' }];
 		}
 	}
+
+	// Engine prefix (!google, !bing, !ddg)
 	const enginePrefix = (() => {
 		const m = q.match(/^!(\w+)\s+(.*)/);
 		if (m) return { engine: m[1].toLowerCase(), rest: m[2] || '' };
@@ -4835,18 +5104,21 @@ async function buildSuggestions(queryRaw) {
 		const eng = enginePrefix.engine === 'ddg' ? 'ddg' : enginePrefix.engine === 'bing' ? 'bing' : 'google';
 		results.push({ text: makeSearchUrl(enginePrefix.rest, eng), label: `Search ${eng.toUpperCase()}: ${enginePrefix.rest}`, type: 'search', sub: eng });
 	}
-	// Math calculations
+
+	// Math
 	if (isMathExpression(q)) {
 		const result = evaluateMath(q);
 		if (result !== null) {
 			results.unshift({ text: q, label: `${q} = ${result}`, type: 'math', sub: 'Calculation' });
 		}
 	}
-	// Country flags
+
+	// Flags
 	const flag = getCountryFlag(q);
 	if (flag) {
 		results.unshift({ text: `https://en.wikipedia.org/wiki/${encodeURIComponent(q)}`, label: `${q} ${flag}`, type: 'flag', sub: 'Country' });
 	}
+
 	// Weather
 	const weatherMatch = lower.match(/^weather(?:\s+in\s+|\s+for\s+)(.+)$/);
 	if (weatherMatch) {
@@ -4860,6 +5132,7 @@ async function buildSuggestions(queryRaw) {
 			}
 		}
 	}
+
 	// Unit conversions
 	const convertMatch = lower.match(/^convert\s+(.+)$/);
 	if (convertMatch) {
@@ -4869,6 +5142,7 @@ async function buildSuggestions(queryRaw) {
 			results.unshift({ text: conv, label: `${conv} = ${result}`, type: 'convert', sub: 'Conversion' });
 		}
 	}
+
 	// Dictionary
 	const defineMatch = lower.match(/^define\s+(.+)$/);
 	if (defineMatch) {
@@ -4878,38 +5152,59 @@ async function buildSuggestions(queryRaw) {
 			results.unshift({ text: makeSearchUrl(`define ${word}`, 'google'), label: def, type: 'define', sub: word });
 		}
 	}
+
 	// Quick facts
 	const fact = getQuickFact(q);
 	if (fact) {
 		results.unshift({ text: fact, label: fact, type: 'fact', sub: 'Fact' });
 	}
+
+	// IP
 	if (looksLikeIp(q)) {
 		results.push({ text: normalizeUrl(q), label: q, type: 'ip', sub: 'IP address' });
 	}
+
+	// URL
 	if (q.startsWith('file://')) {
 		results.unshift({ text: q, label: q, type: 'file', sub: 'Local file' });
 	} else if (looksLikeUrl(q)) {
 		const normalized = normalizeUrl(q);
 		results.unshift({ text: normalized, label: q, type: 'url', sub: normalized });
 	}
-	const bookmarks = (typeof getBookmarksProfile === 'function') ? getBookmarksProfile(activeProfile || 'Default') : [];
-	for (const b of (bookmarks || [])) {
+
+	// Bookmarks
+	const bookmarks = getBookmarksProfile(activeProfile || 'Default') || [];
+	for (const b of bookmarks) {
 		if (!b || !b.url) continue;
 		const title = (b.title || b.url).toString();
-		if (title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower)) results.push({ text: b.url, label: title, type: 'bookmark', sub: b.url });
+		if (title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower)) {
+			results.push({ text: b.url, label: title, type: 'bookmark', sub: b.url });
+		}
 	}
-	const history = (typeof getHistoryProfile === 'function') ? await getHistoryProfile(50) : [];
-	for (const h of (history || [])) {
+
+	// History
+	const history = await getHistoryProfile(100) || [];
+	for (const h of history) {
 		if (!h || !h.url) continue;
 		const title = (h.title || h.url).toString();
-		if (title.toLowerCase().includes(lower) || h.url.toLowerCase().includes(lower)) results.push({ text: h.url, label: title, type: 'history', sub: h.url });
+		if (title.toLowerCase().includes(lower) || h.url.toLowerCase().includes(lower)) {
+			results.push({ text: h.url, label: title, type: 'history', sub: h.url });
+		}
 	}
+
+	// Google search
 	results.push({ text: makeSearchUrl(q, 'google'), label: `Search Google for "${q}"`, type: 'search', sub: q });
+
+	// Google AI search
 	results.push({ text: makeGoogleAISearchUrl(q), label: `Search with Google AI for "${q}"`, type: 'search-ai', sub: 'Google AI' });
+
+	// DuckDuckGo suggestions
 	if (!looksLikeUrl(q) && !looksLikeIp(q) && !q.startsWith('file://')) {
 		const ddgSuggestions = await fetchDuckDuckGoSuggestions(q);
 		results.push(...ddgSuggestions);
 	}
+
+	// Deduplicate
 	const seen = new Set();
 	const final = [];
 	for (const r of results) {
@@ -4920,8 +5215,10 @@ async function buildSuggestions(queryRaw) {
 		final.push(r);
 		if (final.length >= SUGGESTION_LIMIT) break;
 	}
+
 	return final;
 }
+
 
 function renderSuggestions(list) {
 	const box = ensureSuggestionsBox();
@@ -5068,19 +5365,25 @@ function onAddressInputChange(q) {
 if (address) {
 	address.addEventListener('focus', () => {
 		const tab = getActive();
-		const webUrl = tab.webview.getURL()
+		const webUrl = tab.webview.getURL();
+
 		if (tab?.webview) {
-			address.select()
+			address.select();
 		}
+
 		if (!webUrl.includes('pages/new-tab/index.html')) {
 			address.value = tab.webview.getURL();
 		}
+
 		setTimeout(() => {
 			address.dispatchEvent(new Event('input', { bubbles: true }));
 		}, 150);
+
+		searchModeBtn.style.display = 'flex';
 	});
 
-	address.addEventListener("blur", function () {
+	address.addEventListener("blur", function (e) {
+		// Hide suggestions after a delay
 		setTimeout(function () {
 			clearTimeout(suggestionTimer);
 			const q = address.value.trim();
@@ -5094,7 +5397,19 @@ if (address) {
 			box.setAttribute('aria-hidden', 'true');
 			box.classList.remove('show');
 		}, 200);
+
+		const next = e.relatedTarget;
+
+		// If focus moved to the searchModeBtn → keep it visible
+		if (next === searchModeBtn) return;
+
+		// Otherwise hide it
+		searchModeBtn.style.display = 'none';
 	});
+	
+	searchModeBtn.onblur = () => {
+		searchModeBtn.style.display = 'none';
+	}
 
 	address.addEventListener('input', () => {
 		clearTimeout(suggestionTimer);
@@ -5228,7 +5543,7 @@ async function openSidebarApp(url, title, iframe = false) {
 	handle.setAttribute('aria-orientation', 'vertical');
 
 	const savedWidth = await loadSetting('sidebarWidth');
-	const sidebarWidth = typeof savedWidth === 'number' ? `${savedWidth}px` : '350px';
+	const sidebarWidth = typeof savedWidth === 'number' ? `${savedWidth}px` : '550px';
 
 	const mainView = document.getElementById('main-for-view');
 	if (!mainView) return sBAe;
@@ -5240,13 +5555,37 @@ async function openSidebarApp(url, title, iframe = false) {
 		mainView.append(handle, sBAe);
 
 		const web = document.createElement(iframe ? 'iframe' : 'webview');
+		if (!iframe) {
+			web.setAttribute('preload', 'preload.js');
+			web.setAttribute('allowpopups', 'true');
+			web.setAttribute('webpreferences', 'contextIsolation=yes, nativeWindowOpen=yes');
+		}
 		web.setAttribute('partition', `persist:${activeProfile}`);
-		web.classList.add('web-sidebar-app')
+		web.classList.add('web-sidebar-app');
 		web.src = url;
 		sBAe.appendChild(web);
 
-		// Store reference to sidebar iframe for message passing
+		// Store reference to sidebar iframe/webview for message passing
 		window.sidebarIframe = web;
+
+		if (!iframe) {
+			web.addEventListener('ipc-message', (event) => {
+				const payload = event.args?.[0];
+				if (!payload || typeof payload !== 'object') return;
+
+				if (event.channel === 'settings-update') {
+					if (payload.key) {
+						window.api?.settings?.save({ [payload.key]: payload.value }).catch(() => { });
+					}
+					loadBrowserSettings();
+				} else if (event.channel === 'add-bookmark') {
+					const bookmark = payload.bookmark;
+					if (bookmark?.url) {
+						addBookmark(activeProfile || 'Default', bookmark, false);
+					}
+				}
+			});
+		}
 
 		let isDragging = false;
 
@@ -5497,19 +5836,6 @@ window.customConfirm = (msg) =>
 
 window.customPrompt = async (msg, def = "") =>
 	await showDialog({ title: "Prompt", message: msg, type: "prompt", defaultValue: def });// Media Manager Functions
-function updateMediaManager() {
-	const mediaTabs = tabs.filter(t => t.media.isPlaying).map(t => ({
-		tabId: t.id,
-		title: t.title,
-		url: t.url,
-		favicon: t.favicon,
-		media: t.media
-	}));
-	// Send to sidebar if open
-	if (window.sidebarIframe && window.sidebarIframe.contentWindow) {
-		window.sidebarIframe.contentWindow.postMessage({ type: 'update-media', mediaTabs }, '*');
-	}
-}
 
 // Permission management
 async function managePermission(origin, permission) {

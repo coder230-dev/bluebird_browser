@@ -7,12 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 		loadValues();
 	}
+	loadProfileSetting();
 })
 
 // ---------- IndexedDB helpers (fixed and robust) ----------
 function openDB() {
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open('BrowserProfilesDB', 5);
+		const request = indexedDB.open('BrowserProfilesDB', 6);
 
 		request.onupgradeneeded = (event) => {
 			const db = event.target.result; // fixed: scoped const
@@ -95,9 +96,32 @@ async function updateSetting(key, value) {
 	const store = tx.objectStore('settings');
 	store.put({ key, value });
 	await transactionDone(tx);
-	window.parent.postMessage({ updateSettings: true }, window.origin);
+
+	const message = {
+		updateSettings: true,
+		key,
+		value
+	};
+
+	if (window.settingsAPI?.sendUpdate) {
+		window.settingsAPI.sendUpdate(message);
+	} else if (window.parent && window.parent !== window) {
+		window.parent.postMessage(message, "*");
+	}
+
+	if (window.api?.settings?.save) {
+		window.api.settings.save({ [key]: value }).catch(() => { });
+	}
+
 	return key;
 }
+
+const settingsView = document.getElementById("settingsView");
+
+function sendToSettings(msg) {
+	settingsView.send("from-browser", msg);
+}
+
 
 async function loadSetting(key) {
 	const db = await openDB();
@@ -130,6 +154,55 @@ function transactionDone(tx) {
 	});
 }
 
+async function loadProfileSetting() {
+	let profileName = localStorage.getItem('currentProfile')
+	try {
+		const PROFILES = await window.api?.profiles.list();
+		if (!PROFILES) {
+			console.error(PROFILES)
+		}
+		const SELECTED = PROFILES.find(p => p.name === profileName);
+		if (SELECTED) {
+			document.getElementById('curProfileInfo').innerHTML = `
+			<div class="flex">
+				<span id="profile-pfp">
+				</span>
+				<b style="font-size: 24px;">${SELECTED.name}</b>
+			</div>
+			<hr>
+			<button class="wide-btn flex-sb">
+				<span>Manage & Edit Profile Info</span>
+				<i class="material-symbols-rounded">open_in_new</i>
+			</button>
+			<button class="wide-btn flex-sb" onclick="window.electronAPI?.openAppPage?.('pages/profilePages/profileManager.html',700,700,'Default');">
+				<span>Open Profile Manager</span>
+				<i class="material-symbols-rounded">open_in_new</i>
+			</button>
+			<button class="wide-btn flex-sb" onclick="importBookmarksFromHTML()">
+				<span>Import Bookmarks</span>
+				<i class="material-symbols-rounded">upload</i>
+			</button>
+			`;
+
+			let pfpEl = document.getElementById('profile-pfp')
+			if (SELECTED.avatar && SELECTED.avatar.startsWith('data:')) {
+				// image avatar
+				pfpEl.innerHTML = `<img src="${SELECTED.avatar}" alt="${SELECTED.name}'s Profile" style="width:36px;height:36px;border-radius:50%">`;
+			} else if (SELECTED.avatar) {
+				// monograph or custom HTML
+				pfpEl.innerHTML = SELECTED.avatar;
+			} else {
+				// fallback icon
+				pfpEl.innerHTML = `<i class="material-symbols-rounded">account_circle</i>`;
+			}
+		} else {
+			console.warn('Profile not found in list:', profileName);
+		}
+	} catch (err) {
+		console.error('Failed to load profiles:', err);
+	}
+}
+
 async function loadValues() {
 	const settingsArray = await loadAllSettings();
 	if (!settingsArray) {
@@ -152,11 +225,19 @@ async function loadValues() {
 	};
 
 	const id = map[theme];
-	if (!id) return; // safety
+	if (id) {
+		const input = document.getElementById(id);
+		if (input) input.checked = true;
+	}
 
-	// Check the correct radio button
-	const input = document.getElementById(id);
-	if (input) input.checked = true;
+	const adblockToggle = document.getElementById('adblock-toggle');
+	if (adblockToggle) {
+		const enabled = await loadSetting('adBlockEnabled');
+		adblockToggle.checked = Boolean(enabled);
+		adblockToggle.addEventListener('change', (event) => {
+			updateSetting('adBlockEnabled', event.target.checked);
+		});
+	}
 }
 
 const sidebarLinks = document.querySelectorAll('#settingSidebar a');
@@ -372,4 +453,74 @@ function toggleSidebar() {
 	} else {
 		sidebar.classList.add('open');
 	}
+}
+
+// Import Bookmarks
+function importBookmarksFromHTML() {
+	let input = document.getElementById("bookmarkImportInput");
+	if (!input) {
+		input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".html,.htm";
+		input.id = "bookmarkImportInput";
+		input.style.display = "none";
+		document.body.appendChild(input);
+	}
+
+	input.onchange = async () => {
+		const file = input.files[0];
+		if (!file) return;
+
+		try {
+			const text = await file.text();
+			const parser = new DOMParser();
+			const doc = parser.parseFromString(text, "text/html");
+
+			const anchors = [...doc.querySelectorAll("a")];
+
+			if (anchors.length === 0) {
+				alert("No bookmarks found in this file.");
+				return;
+			}
+
+			let imported = 0;
+
+			for (const a of anchors) {
+				setTimeout(function () {
+
+					const url = a.getAttribute("href");
+					const title = a.textContent.trim();
+
+					if (url) {
+						const payload = {
+							type: "add-bookmark",
+							bookmark: {
+								title,
+								url,
+								favicon: null,
+								createdAt: Date.now()
+							}
+						};
+
+						if (window.settingsAPI?.sendBookmark) {
+							window.settingsAPI.sendBookmark(payload);
+						} else if (window.parent && window.parent !== window) {
+							window.parent.postMessage(payload, "*");
+						}
+
+						imported++;
+					}
+				}, imported * 10)
+			}
+
+			alert(`Imported ${imported} bookmarks.`);
+		} catch (err) {
+			console.error("Bookmark import failed:", err);
+			alert("Failed to import bookmarks.");
+		}
+
+		input.value = "";
+	};
+
+	input.click();
 }

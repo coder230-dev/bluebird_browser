@@ -11,11 +11,18 @@ let windows = [];
 let currentProfile = 'Default';
 let mainWindow = null;
 let allowClose = true;
+let adBlockEnabled = false;
+const pendingPermissionRequests = new Map();
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 const profilesPath = path.join(app.getPath('userData'), 'profiles.json');
 const boundsPath = path.join(app.getPath('userData'), 'window-bounds.json');
 const passwordsPath = path.join(app.getPath('userData'), 'passwords.json');
+
+let updateInfo = {
+	updateAvaiable: false,
+	downloaded: false,
+}
 
 let openTabs = [];
 const webviews = new Set();
@@ -167,6 +174,78 @@ function saveSettings(newSettings) {
 		console.warn('Failed to save settings:', err.message);
 	}
 }
+
+function getAutoUpdateChannel(version) {
+	const match = /-(alpha|beta|rc|dev|nightly|preview)(?:\.|$)/i.exec(version);
+	return match ? match[1].toLowerCase() : 'latest';
+}
+
+function sendUpdaterEvent(channel, data = {}) {
+	const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getAllWindows()[0];
+	if (win && !win.isDestroyed()) {
+		win.webContents.send(channel, data);
+	}
+}
+
+function initAutoUpdater() {
+	const version = app.getVersion();
+	const channel = getAutoUpdateChannel(version);
+	autoUpdater.autoDownload = true;
+	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.allowPrerelease = channel !== 'latest';
+	autoUpdater.channel = channel;
+
+	autoUpdater.on('checking-for-update', () => {
+		sendUpdaterEvent('update-checking');
+	});
+
+	autoUpdater.on('update-available', (info) => {
+		sendUpdaterEvent('update-available', {
+			version: info.version,
+			releaseNotes: info.releaseNotes || null,
+			channel,
+		});
+		updateInfo.updateAvaiable = true;
+	});
+
+	autoUpdater.on('update-not-available', () => {
+		sendUpdaterEvent('update-not-available');
+	});
+
+	autoUpdater.on('download-progress', (progress) => {
+		sendUpdaterEvent('update-download-progress', progress);
+	});
+
+	autoUpdater.on('update-downloaded', (info) => {
+		sendUpdaterEvent('update-downloaded', {
+			version: info.version,
+			releaseNotes: info.releaseNotes || null,
+			channel,
+		});
+		updateInfo.downloaded = true;
+	});
+
+	autoUpdater.on('error', (error) => {
+		console.warn('Auto update error:', error == null ? 'unknown' : (error.stack || error).toString());
+		sendUpdaterEvent('update-error', { message: error == null ? 'unknown' : error.message });
+	});
+
+	autoUpdater.checkForUpdates().catch((err) => {
+		console.warn('Failed to check for updates:', err);
+	});
+}
+
+ipcMain.on('install-update', () => {
+	autoUpdater.quitAndInstall();
+});
+
+ipcMain.on('check-for-updates', () => {
+	if (app.isPackaged) {
+		autoUpdater.checkForUpdates().catch((err) => {
+			console.warn('Failed to check for updates:', err);
+		});
+	}
+});
 
 // ---------------- Context menu for BrowserWindow ----------------
 function setupContextMenu(win) {
@@ -535,7 +614,12 @@ async function buildAppMenu(win) {
 		{
 			label: app.name,
 			submenu: [
-				{ role: 'about' },
+				{
+					label: 'About Bluebird Browser',
+					click: async () => {
+						sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/' });
+					}
+				},
 				{ type: 'separator' },
 				{ role: 'services' },
 				{ label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => send('openSettings') },
@@ -600,6 +684,7 @@ async function buildAppMenu(win) {
 					label: 'Bookmarks',
 					submenu: [
 						{ label: 'Bookmark this Page', accelerator: 'CmdOrCtrl+D', click: () => send('addCBookmark') },
+						{ label: 'Search Bookmarks', accelerator: 'CmdOrCtrl+Shift+D', click: () => send('searchOpenBookmark') },
 						{ label: 'Bookmarks Manager', click: () => send('bookmarksManager') }
 					]
 				},
@@ -647,6 +732,12 @@ async function buildAppMenu(win) {
 			role: 'help',
 			submenu: [
 				{ label: `Browser ver. ${app.getVersion()}`, enabled: false },
+				{
+					label: 'Report An Issue...',
+					click: async () => {
+						sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/issues/new' });
+					}
+				},
 				{ type: 'separator' },
 				{ label: `Built with Electron & Chromium`, enabled: false },
 				{
@@ -770,6 +861,10 @@ async function createWindow(profile = 'Default') {
 	win.profileName = profile;
 	currentProfile = profile;
 	mainWindow = win;
+
+	if (updateInfo.updateAvaiable) {
+		showOverlayNotification('An Update Is Avaiable. Check the update button on the top right.', win, 'browser_updated');
+	}
 
 	await updateApplicationMenu(win);
 
@@ -1060,13 +1155,63 @@ app.whenReady().then(async () => {
 
 	const ses = session.defaultSession
 
-	ses.setPermissionRequestHandler((webContents, permission, callback) => {
-		if (autoGrant(permission, webContents.getURL())) {
-			callback(true)
-		} else {
-			callback(false)
+	const adBlockPatterns = [
+		'doubleclick.net',
+		'googlesyndication.com',
+		'googleadservices.com',
+		'adservice.google.com',
+		'pagead2.googlesyndication.com',
+		'adsystem.com',
+		'adnxs.com',
+		'adsafeprotected.com',
+		'taboola.com',
+		'outbrain.com',
+		'amazon-adsystem.com',
+		'adroll.com',
+		'scorecardresearch.com',
+		'serving-sys.com',
+		'quantserve.com',
+		'/ads?',
+		'/banner?',
+		'/advert',
+		'adserver',
+		'ad.',
+		'.ad.',
+		'doubleclick'
+	];
+
+	function shouldBlockAd(url) {
+		if (!url) return false;
+		const normalized = url.toLowerCase();
+		return adBlockPatterns.some(pattern => normalized.includes(pattern));
+	}
+
+	adBlockEnabled = loadSettings().adBlockEnabled === true;
+
+	ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+		if (adBlockEnabled && shouldBlockAd(details.url)) {
+			return callback({ cancel: true });
 		}
-	})
+		return callback({ cancel: false });
+	});
+
+	ses.setPermissionRequestHandler((webContents, permission, callback) => {
+		const origin = webContents.getURL();
+		const hostWindow = webContents.hostWebContents || BrowserWindow.fromWebContents(webContents);
+		if (!hostWindow || hostWindow.isDestroyed()) {
+			callback(false);
+			return;
+		}
+
+		const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+		const timer = setTimeout(() => {
+			pendingPermissionRequests.delete(requestId);
+			callback(false);
+		}, 30000);
+
+		pendingPermissionRequests.set(requestId, { callback, timer });
+		hostWindow.send('permission-request', { requestId, origin, permission });
+	});
 
 	const dockMenu = Menu.buildFromTemplate([
 		{
@@ -1082,6 +1227,10 @@ app.whenReady().then(async () => {
 	])
 
 	app.dock.setMenu(dockMenu)
+
+	if (app.isPackaged) {
+		initAutoUpdater();
+	}
 
 });
 
@@ -1131,8 +1280,15 @@ ipcMain.on('sidebar:open-app', (event, payload) => {
 	broadcastOpenSidebarApp(payload);
 });
 
-ipcMain.on('permission-response', (event, { origin, permission, allow }) => {
-	console.log(`User decision for ${origin} ${permission}: ${allow}`);
+ipcMain.on('permission-response', (event, { requestId, origin, permission, allow }) => {
+	const pending = pendingPermissionRequests.get(requestId);
+	if (!pending) {
+		console.warn('Permission response received for unknown request:', requestId, origin, permission);
+		return;
+	}
+	clearTimeout(pending.timer);
+	pendingPermissionRequests.delete(requestId);
+	pending.callback(Boolean(allow));
 });
 
 ipcMain.handle('site-info:get', async (_event, webviewId) => {
@@ -1229,6 +1385,9 @@ ipcMain.handle('settings:load', () => loadSettings());
 ipcMain.handle('settings:save', (_e, s) => {
 	const merged = { ...loadSettings(), ...s };
 	saveSettings(merged);
+	if (typeof merged.adBlockEnabled !== 'undefined') {
+		adBlockEnabled = merged.adBlockEnabled === true;
+	}
 	return merged;
 });
 
@@ -1371,14 +1530,25 @@ ipcMain.on('update-tabs-menu', (_e, tabs) => {
 	buildAppMenu(win);
 });
 
+const registeredWebviews = new Set();
+
 ipcMain.on('register-webview', (_event, id) => {
+	if (registeredWebviews.has(id)) return;
+	registeredWebviews.add(id);
+
 	const wc = webContents.fromId(id);
 	if (!wc) return;
+
+	wc.once('destroyed', () => {
+		registeredWebviews.delete(id);
+	});
 
 	wc.on('zoom-changed', async () => {
 		const factor = await wc.getZoomFactor();
 		const parentWin = BrowserWindow.fromWebContents(wc);
-		parentWin.webContents.send('zoom-updated', { id: wc.id, factor });
+		if (parentWin && !parentWin.isDestroyed()) {
+			parentWin.webContents.send('zoom-updated', { id: wc.id, factor });
+		}
 	});
 
 	wc.on('context-menu', (_event, params) => {
@@ -1398,6 +1568,21 @@ ipcMain.on('register-webview', (_event, id) => {
 	});
 });
 
+ipcMain.handle('clear-browsing-data', async () => {
+	const ses = session.defaultSession;
+	try {
+		await ses.clearStorageData({
+			storages: ['appcache', 'cookies', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'serviceworkers', 'caches']
+		});
+		await ses.clearCache();
+		await ses.clearAuthCache();
+		return true;
+	} catch (err) {
+		console.warn('Failed to clear browsing data:', err);
+		return false;
+	}
+});
+
 // Detach tab into a new window
 ipcMain.on('new-window-with-tab', (_e, tab) => {
 	const win = new BrowserWindow({
@@ -1413,21 +1598,3 @@ ipcMain.on('new-window-with-tab', (_e, tab) => {
 		win.webContents.send('new-tab', tab.url);
 	});
 });
-
-// autoUpdater.checkForUpdates();
-
-// autoUpdater.on("update-available", () => {
-// 	if (mainWindow && !mainWindow.isDestroyed()) {
-// 		mainWindow.webContents.send("update-available");
-// 	}
-// });
-
-// autoUpdater.on("update-downloaded", () => {
-// 	if (mainWindow && !mainWindow.isDestroyed()) {
-// 		mainWindow.webContents.send("update-downloaded");
-// 	}
-// });
-
-// ipcMain.on("install-update", () => {
-// 	autoUpdater.quitAndInstall();
-// });

@@ -24,10 +24,12 @@
         <a data-target="general" href="#general"><i class="material-symbols-rounded">settings</i> General</a>
         <a data-target="privacy" href="#privacy"><i class="material-symbols-rounded">privacy</i> Privacy & Security</a>
         <a data-target="downloads" href="#downloads"><i class="material-symbols-rounded">download</i> Downloads</a>
-        <a data-target="sitesettings" href="#sitesettings"><i class="material-symbols-rounded">page_info</i> Site Settings</a>
+        <a data-target="sitesettings" href="#sitesettings"><i class="material-symbols-rounded">page_info</i> Site
+            Settings</a>
         <a data-target="about" href="#about"><i class="material-symbols-rounded">info</i> About Browser</a>
         <hr>
-        <a data-target="experimentalbeta" href="#experimentalbeta"><i class="material-symbols-rounded">experiment</i> Experimental Features</a>
+        <a data-target="experimentalbeta" href="#experimentalbeta"><i class="material-symbols-rounded">experiment</i>
+            Experimental Features</a>
     </aside>
 
     <main id="main-content">
@@ -83,6 +85,117 @@
                     </div>
                 </div>
             </div>
+            <div class="card toolbar-set">
+                <h3>Toolbar</h3>
+                <p>Choose your icons that show in the toolbar and other settings related to it.</p>
+                <div class="tollbarSetCont">
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">arrow_forward</i> Forward</b>
+                        <input disabled onchange="updateSetting('toolbar.forward', this.checked)" type="checkbox"
+                            class="check-toggle" id="forward-toolbar-settings">
+                        <label for="forward-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">refresh</i> Reload</b>
+                        <input disabled onchange="updateSetting('toolbar.reload', this.checked)" type="checkbox"
+                            class="check-toggle" id="reload-toolbar-settings">
+                        <label for="reload-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">home</i> Home</b>
+                        <input disabled onchange="updateSetting('toolbar.home', this.checked)" type="checkbox"
+                            class="check-toggle" id="home-toolbar-settings">
+                        <label for="home-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">search</i> Zoom</b>
+                        <input disabled onchange="updateSetting('toolbar.zoom', this.checked)" type="checkbox"
+                            class="check-toggle" id="zoom-toolbar-settings">
+                        <label for="zoom-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">bookmark</i> Bookmark Manager</b>
+                        <input disabled onchange="updateSetting('toolbar.bookmarkManager', this.checked)" type="checkbox"
+                            class="check-toggle" id="bkMkMana-toolbar-settings">
+                        <label for="bkMkMana-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">history</i> History</b>
+                        <input disabled onchange="updateSetting('toolbar.history', this.checked)" type="checkbox"
+                            class="check-toggle" id="history-toolbar-settings">
+                        <label for="history-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">download</i> Downloads</b>
+                        <input disabled onchange="updateSetting('toolbar.downloads', this.checked)" type="checkbox"
+                            class="check-toggle" id="download-toolbar-settings">
+                        <label for="download-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">find_in_page</i> Find</b>
+                        <input disabled onchange="updateSetting('toolbar.find', this.checked)" type="checkbox"
+                            class="check-toggle" id="find-toolbar-settings">
+                        <label for="find-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">print</i> Print</b>
+                        <input disabled onchange="updateSetting('toolbar.print', this.checked)" type="checkbox"
+                            class="check-toggle" id="print-toolbar-settings">
+                        <label for="print-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">share</i> Share</b>
+                        <input disabled onchange="updateSetting('toolbar.share', this.checked)" type="checkbox"
+                            class="check-toggle" id="share-toolbar-settings">
+                        <label for="share-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">privacy_tip</i> Privacy</b>
+                        <input disabled onchange="updateSetting('toolbar.privacy', this.checked)" type="checkbox"
+                            class="check-toggle" id="privacy-toolbar-settings">
+                        <label for="privacy-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">code</i> Developer Tools</b>
+                        <input disabled onchange="updateSetting('toolbar.devTools', this.checked)" type="checkbox"
+                            class="check-toggle" id="dev-toolbar-settings">
+                        <label for="dev-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">settings</i> Settings</b>
+                        <input disabled onchange="updateSetting('toolbar.settings', this.checked)" type="checkbox"
+                            class="check-toggle" id="settings-toolbar-settings">
+                        <label for="settings-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">robot_2</i> AI Hub</b>
+                        <input disabled onchange="updateSetting('toolbar.ai', this.checked)" type="checkbox" class="check-toggle"
+                            id="ai-toolbar-settings">
+                        <label for="ai-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                    <div class="flex">
+                        <b> <i class="material-symbols-rounded">battery_android_frame_6</i> Battery</b>
+                        <input disabled onchange="updateSetting('toolbar.battery', this.checked)" type="checkbox"
+                            class="check-toggle" id="battery-toolbar-settings">
+                        <label for="battery-toolbar-settings" class="toggleSwitch">
+                        </label>
+                    </div>
+                </div>
+            </div>
         </section>
         <hr>
         <p>Settings below are under construction. GO DOWN AT YOUR OWN RISK</p>
@@ -90,7 +203,19 @@
             <h2>General</h2>
         </section>
         <section id="privacy" class="setting-section">
-            
+            <h2>Privacy & Security</h2>
+            <div class="card">
+                <div class="flex" style="justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <h3>Ad Blocker</h3>
+                        <p>Block common ad requests when enabled.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="adblock-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
         </section>
         <section id="downloads" class="setting-section">
             <h2>Downloads</h2>

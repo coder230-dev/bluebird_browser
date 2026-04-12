@@ -23,7 +23,11 @@
 			<div id="tabs" class="tabs">
 				<button title="New Tab" id="new-tab" class="new-tab">+</button>
 			</div>
-			<button id="top-right-btn"><i class="material-symbols-rounded">tabs</i></button>
+			<button id="update-btn" class="hidden" title="App update available">
+				<i class="material-symbols-rounded">system_update</i>
+				<span class="update-badge"></span>
+			</button>
+			<button id="top-right-btn"><i class="material-symbols-rounded">tabs</i> Tabs</button>
 		</div>
 		<div class="toolbar">
 			<button title="Back" id="back">
@@ -36,13 +40,15 @@
 				<i class="material-symbols-rounded">refresh</i>
 			</button>
 			<div class="search-container" id="search-container">
-				<button id="viewWebsiteInfo" title="View Website Information"><i
-						class="material-symbols-rounded">web</i></button>
+				<button id="viewWebsiteInfo" title="View Website Information" class="material-symbols-rounded">
+					<i class="material-symbols-rounded">web</i></button>
 				<input id="address" type="text" placeholder="Search or enter URL address">
 				<span class="sep"></span>
+				<button id="searchModeOpt" style="display: flex !important; align-items: center;" title="Search Mode"><i
+						class="material-symbols-rounded">search_gear</i> Set Search Mode</button>
 				<button id="zoomBtn" title="Zoom..."><i class="material-symbols-rounded">search</i></button>
-				<button id="address-more" class="material-symbols-rounded">
-					keyboard_arrow_down
+				<button id="address-more">
+					<i class="material-symbols-rounded">keyboard_arrow_down</i>
 				</button>
 				<div id="suggestions" class="suggestions"></div>
 				<div id="right-info"></div>
@@ -65,17 +71,11 @@
 			<button id="btnShare" class="hbD">
 				<i title="Share" class="material-symbols-rounded">share</i>
 			</button>
-			<button id="btnQRcode" class="hbD">
-				<i title="QR Code" class="material-symbols-rounded">qr_code</i>
+			<button id="btnPrivacy" class="hbD">
+				<i title="Privacy" class="material-symbols-rounded">privacy_tip</i>
 			</button>
 			<button id="btnDevTools" class="hbD">
 				<i title="Developer Tools" class="material-symbols-rounded">code</i>
-			</button>
-			<button id="btnMediaManager" class="">
-				<i title="Media Manager" class="material-symbols-rounded">play_circle</i>
-			</button>
-			<button id="btnDownloadManager" class="hbD">
-				<i title="Download Manager" class="material-symbols-rounded">download</i>
 			</button>
 			<button id="btnSettings" class="hbD">
 				<i title="Settings" class="material-symbols-rounded">settings</i>
@@ -88,10 +88,6 @@
 				<i title="Settings" class="material-symbols-rounded">battery_android_frame_6</i>
 			</button>
 			<button id="more-btn" style="z-index: 1000;"><i class="material-symbols-rounded">more_vert</i></button>
-		</div>
-		<div id="bookmarks-bar" class="displayed">
-			<button><i class="material-symbols-rounded">apps</i> Apps</button>
-			<div class="dot"></div>
 		</div>
 	</header>
 	<div id="main-for-view">
