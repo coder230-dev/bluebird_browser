@@ -39,6 +39,7 @@
       }
     },
     "win": {
+      "target": "nsis",
       "icon": "icon.png"
     },
     "linux": {
@@ -48,7 +49,11 @@
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "make:mac": "electron-forge make --platform=darwin --arch=x64",
+    "build:win": "electron-builder --win",
+    "make:linux": "electron-forge make --platform=linux --arch=x64",
+    "make:all": "electron-forge make --arch=x64"
   },
   "keywords": [],
   "author": "",
@@ -68,6 +73,8 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.10.2",
     "@electron-forge/plugin-fuses": "^7.10.2",
     "@electron/fuses": "^1.8.0",
-    "electron": "^41.2.0"
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9"
   }
 }

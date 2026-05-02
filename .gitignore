@@ -1,6 +1,3 @@
 node_modules
-out/Bluebird Browser-darwin-arm64/Bluebird Browser.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework
-out/make/zip/darwin/arm64/Bluebird Browser-darwin-arm64-2.0.0 BETA 1/3.zip
-out/Bluebird Browser-darwin-arm64/Bluebird Browser.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework
-out/make/zip/darwin/arm64/Bluebird Browser-darwin-arm64-2.0.0 BETA 1/3.zip
 out/
+dist/

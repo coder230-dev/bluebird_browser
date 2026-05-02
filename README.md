@@ -24,6 +24,24 @@ Bluebird Browser is a lightweight, privacy-focused web browser designed for spee
 2. Install dependencies: `npm install`
 3. Run the browser: `npm start`
 
+## Cross-platform build prerequisites
+
+- macOS
+  - Install Homebrew if you don't have it: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+  - Install Windows build runtime support: `brew install wine mono`
+  - Install Linux packaging tools if you want local Linux builds: `brew install dpkg rpm`
+- Linux
+  - Install packaging tools: `sudo apt install fakeroot dpkg-dev rpm` or the equivalent for your distro.
+- Windows
+  - Build on Windows directly for the best compatibility, or use CI.
+
+## Build commands
+
+- Build macOS: `npm run make:mac`
+- Build Windows: `npm run make:win`
+- Build Linux: `npm run make:linux`
+- Build all supported targets: `npm run make:all`
+
 ## Usage
 
 - Launch the browser and start browsing.
