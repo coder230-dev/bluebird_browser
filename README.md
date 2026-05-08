@@ -47,9 +47,8 @@ Bluebird Browser is a lightweight, privacy-focused web browser designed for spee
 - Launch the browser and start browsing.
 - Access settings via the menu to customize themes and features.
 
-## Contributing
+## Issues
 
-We welcome contributions! Please fork the repo and submit a pull request.
 Any issues? Please report them and I will take a look on it. Some features might be fixed by either AI or myself.
 
 ## License
