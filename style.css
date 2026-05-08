@@ -549,6 +549,7 @@ input {
 		background: var(--scheme-4);
 		outline: 1px solid var(--scheme-10);
 	}
+
 	&.hover-force {
 		outline: none;
 	}
@@ -781,13 +782,24 @@ input {
 
 }
 
+.tab.active {
+	background: var(--scheme-3);
+	border-radius: 1em;
+	box-shadow: 0px 3px color-mix(in srgb, var(--scheme-7) 10%, transparent);
+}
+
+.tab.active:hover {
+	background: var(--scheme-3);
+}
+
 .tab:hover {
 	background: var(--scheme-2);
 	backdrop-filter: brightness(30%);
+	transition: 0.1s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
-.tab:focus {
-	outline: 1px solid var(--scheme-9);
+.tab:active {
+	outline: 1px solid var(--scheme-4);
 }
 
 /* Title truncation */
@@ -834,6 +846,8 @@ input {
 .tab.close-animation {
 	padding: 0;
 	transition: 0.4s cubic-bezier(0.075, 0.82, 0.165, 1) !important;
+	max-width: 0px;
+	min-width: 0px;
 }
 
 .tab.pinned {
@@ -894,11 +908,6 @@ input {
 .tab i {
 	font-size: 0.8rem;
 	min-width: fit-content;
-}
-
-.tab.active {
-	background: var(--scheme-3);
-	;
 }
 
 .new-tab {
@@ -1148,7 +1157,7 @@ webview {
 
 .tab-info {
 	position: absolute;
-	background: var(--scheme-3);
+	background: var(--scheme-1);
 	color: var(--scheme-10);
 	backdrop-filter: blur(20px);
 	padding: 12px;
@@ -1177,6 +1186,12 @@ webview {
 	.img-tab-view:nth-last-of-type(1) {
 		display: unset;
 	}
+}
+
+.tab-info::before {
+	content: "";
+	width: calc(100% + 4px);
+	height: calc(100% + 4px);
 }
 
 .tab-info.show {
@@ -1276,6 +1291,12 @@ webview {
 	button:hover {
 		background: #7777770e;
 	}
+}
+
+.out-container:has(.context-menu, .context-submenu, .popup) {
+	padding: 3px;
+	background: var(--scheme-2);
+	position: fixed;
 }
 
 .context-menu,
@@ -1418,15 +1439,27 @@ webview {
 }
 
 .find-pop {
-	padding: 20px 10px !important;
-	padding-right: 50px !important;
+	/* padding: 20px 10px !important; */
+	padding-right: 45px !important;
 	gap: 20px;
 	background: var(--scheme-1) !important;
 	border-radius: 20px !important;
 
+	* {
+		position: relative;
+	}
+
+	#findCount {
+		background: var(--scheme-4);
+		border-radius: 10px;
+		padding: 3px 10px;
+	}
+
 	input {
 		background: none;
 		color: var(--scheme-10);
+		width: 100px;
+		border: none;
 	}
 }
 
@@ -1465,6 +1498,7 @@ webview {
 	&:focus {
 		outline: 1px solid var(--scheme-9);
 	}
+
 	i {
 		font-size: 16px;
 	}

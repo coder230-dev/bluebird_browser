@@ -30,6 +30,35 @@ document.addEventListener('load', async function () {
         );
     }
 
+    // Load theme
+
+    const settings = {};
+    settingsArray.forEach(({ key, value }) => {
+        settings[key] = value;
+    });
+
+    let theme = settings.theme;
+    if (typeof theme === 'string') {
+        try {
+            theme = JSON.parse(theme);
+        } catch (e) {
+            console.warn('Failed to parse theme:', e);
+            theme = {};
+        }
+    } else if (Array.isArray(theme)) {
+        theme = Object.fromEntries(theme.map(t => [t.key, t.value]));
+    } else if (typeof theme === 'object' && theme !== null) {
+        // already object
+    } else {
+        theme = {};
+    }
+    Object.entries(theme).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(`--${key}`, value);
+    });
+
+    // System Theme
+    document.body.style.colorScheme = settings.systemTheme;
+
     setTimeout(async function () {
         await renderCardItems();
         document.getElementById('search-suggestion').focus();

@@ -200,6 +200,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	// --- Context menus
 	sendContextMenu: (info) => ipcRenderer.send('webview-context-menu', info),
 	registerWebview: (webContentsId) => ipcRenderer.send('register-webview', webContentsId),
+	registerPartition: (partition) => ipcRenderer.send('register-partition', partition),
 	clearBrowsingData: () => ipcRenderer.invoke('clear-browsing-data'),
 
 	// --- Profiles
@@ -346,6 +347,15 @@ contextBridge.exposeInMainWorld('permissionsAPI', {
 	},
 	respond: (requestId, origin, permission, allow) => {
 		ipcRenderer.send('permission-response', { requestId, origin, permission, allow });
+	},
+	getDecision: async (origin, permission) => {
+		return await ipcRenderer.invoke('permission-query', { origin, permission });
+	},
+	getAll: async (origin) => {
+		return await ipcRenderer.invoke('permission-get-all', { origin });
+	},
+	saveDecision: (origin, permission, decision) => {
+		ipcRenderer.send('permission-save', { origin, permission, decision });
 	}
 });
 

@@ -2,10 +2,30 @@
 // 2026 Bryant Sandoval
 // DISCLAIMER: This app or project was mostly made with AI, combined with features that were checked and created by me
 
+// Cache
+const MAX_RECENT_CACHE = 50;
+window.cachedHistoryRecent = [];
+
+function addToRecentCache(item) {
+	// Remove duplicates
+	window.cachedHistoryRecent = window.cachedHistoryRecent.filter(i => i.url !== item.url);
+	// Add to front
+	window.cachedHistoryRecent.unshift({
+		url: item.url,
+		title: item.title,
+		// Don't store favicon base64 - just store the URL
+		faviconUrl: item.faviconUrl
+	});
+	// Trim
+	if (window.cachedHistoryRecent.length > MAX_RECENT_CACHE) {
+		window.cachedHistoryRecent.length = MAX_RECENT_CACHE; // faster than shift()
+	}
+}
 
 let appVersion
-window.cachedHistoryRecent = [];
 const tabHistory = {};
+
+let savedSettings = {};
 
 let zoomSetting = undefined;
 
@@ -72,32 +92,6 @@ const updateContent = `
 		</ul>
 	</div>
 </div> */}
-
-// This is for battery manager, different from the other code.
-navigator.getBattery().then(battery => {
-	const sample = {
-		timestamp: Date.now(),
-		level: Math.round(battery.level * 100),
-		charging: battery.charging,
-		chargingTime: battery.chargingTime,
-		dischargingTime: battery.dischargingTime
-	};
-	recordBatterySample(sample);
-});
-
-function loadBatteryData() {
-	return JSON.parse(localStorage.getItem("batteryData") || "[]");
-}
-
-function saveBatteryData(data) {
-	localStorage.setItem("batteryData", JSON.stringify(data));
-}
-
-function recordBatterySample(sample) {
-	const data = loadBatteryData();
-	data.push(sample);
-	localStorage.setItem("batteryData", JSON.stringify(data));
-}
 
 window.api.getAppVersion().then(version => {
 	appVersion = version
@@ -650,8 +644,8 @@ if (profileInfoEl) {
 			function: () => {
 				window.electronAPI?.openAppPage?.(
 					'pages/profilePages/profileManager.html',
-					700,
-					700,
+					800,
+					800,
 					'Default'
 				);
 			}
@@ -805,6 +799,8 @@ async function loadAllSettings() {
 	const store = tx.objectStore('settings');
 	const res = await promisifyRequest(store.getAll());
 	return res || [];
+
+	savedSettings = res;
 }
 
 async function getHistory() {
@@ -863,18 +859,123 @@ async function savePermission(url, permission, decision) {
 	const db = await openDB();
 	const tx = db.transaction('permissions', 'readwrite');
 	const store = tx.objectStore('permissions');
-	const key = `${url}:${permission}`;
-	store.put({ url: key, decision, timestamp: Date.now() });
+	const normalizedUrl = getBaseURL(url);
+	const key = `${normalizedUrl}:${permission}`;
+	const legacyKey = `${url}:${permission}`;
+	if (decision === 'default' || decision === undefined || decision === null) {
+		store.delete(key);
+		store.delete(legacyKey);
+	} else {
+		store.put({ url: key, decision, timestamp: Date.now() });
+		store.delete(legacyKey);
+	}
 	await transactionDone(tx);
+}
+
+async function deletePermission(url, permission) {
+	const db = await openDB();
+	const tx = db.transaction('permissions', 'readwrite');
+	const store = tx.objectStore('permissions');
+	const normalizedUrl = getBaseURL(url);
+	const key = `${normalizedUrl}:${permission}`;
+	const legacyKey = `${url}:${permission}`;
+	store.delete(key);
+	store.delete(legacyKey);
+	await transactionDone(tx);
+}
+
+function getPermissionLookupKeys(permission) {
+	const mapping = {
+		media: ['media', 'camera', 'microphone'],
+		camera: ['camera', 'media'],
+		microphone: ['microphone', 'media'],
+		audioCapture: ['audioCapture', 'media'],
+		midi: ['midi', 'midiSysex'],
+		midiSysex: ['midiSysex', 'midi'],
+		displayCapture: ['display-capture'],
+		'clipboard-read': ['clipboard-read'],
+		'clipboard-write': ['clipboard-write'],
+		protectedMediaIdentifier: ['protectedMediaIdentifier'],
+		fullscreen: ['fullscreen'],
+		geolocation: ['geolocation'],
+		notifications: ['notifications'],
+		pointerLock: ['pointerLock'],
+		openExternal: ['openExternal'],
+		'persistent-storage': ['persistent-storage']
+	};
+	return mapping[permission] || [permission];
+}
+
+function resolvePermissionDecision(permission, decisions) {
+	if (permission === 'media') {
+		const mediaDecision = decisions.media;
+		const cameraDecision = decisions.camera;
+		const microphoneDecision = decisions.microphone;
+		if (cameraDecision === 'deny' || microphoneDecision === 'deny') return 'deny';
+		if (cameraDecision === 'allow' && microphoneDecision === 'allow') return 'allow';
+		return mediaDecision;
+	}
+	if (permission === 'audioCapture') {
+		return decisions.audioCapture || decisions.media;
+	}
+	if (permission === 'midi') {
+		return decisions.midi || decisions.midiSysex;
+	}
+	if (permission === 'midiSysex') {
+		return decisions.midiSysex || decisions.midi;
+	}
+	return decisions[permission] || undefined;
 }
 
 async function loadPermission(url, permission) {
 	const db = await openDB();
 	const tx = db.transaction('permissions', 'readonly');
 	const store = tx.objectStore('permissions');
-	const key = `${url}:${permission}`;
-	const res = await promisifyRequest(store.get(key));
-	return res?.decision;
+	const normalizedUrl = getBaseURL(url);
+	const decisions = {};
+	for (const key of getPermissionLookupKeys(permission)) {
+		const fullKey = `${normalizedUrl}:${key}`;
+		const res = await promisifyRequest(store.get(fullKey));
+		if (res?.decision) decisions[key] = res.decision;
+	}
+	if (Object.keys(decisions).length === 0) {
+		const legacyKey = `${url}:${permission}`;
+		const legacyRes = await promisifyRequest(store.get(legacyKey));
+		return legacyRes?.decision;
+	}
+	return resolvePermissionDecision(permission, decisions);
+}
+
+async function loadAllSitePermissions(url) {
+	const db = await openDB();
+	const tx = db.transaction('permissions', 'readonly');
+	const store = tx.objectStore('permissions');
+	const all = await promisifyRequest(store.getAll());
+	const normalizedUrl = getBaseURL(url);
+	return (all || []).reduce((acc, entry) => {
+		if (!entry?.url || typeof entry.url !== 'string') return acc;
+		if (entry.url.startsWith(`${normalizedUrl}:`)) {
+			const permissionKey = entry.url.slice(normalizedUrl.length + 1);
+			acc[permissionKey] = entry.decision;
+		}
+		return acc;
+	}, {});
+}
+
+async function applySitePermissionsToWebview(webview, url) {
+	if (!webview || !url) return {};
+	const permissions = await loadAllSitePermissions(url);
+	webview.dataset.sitePermissions = JSON.stringify(permissions);
+	webview.dataset.siteOrigin = getBaseURL(url);
+	return permissions;
+}
+
+async function setSitePermission(siteUrl, permission, decision) {
+	await savePermission(siteUrl, permission, decision);
+	const active = getActive();
+	if (active?.webview && getBaseURL(active.url) === getBaseURL(siteUrl)) {
+		applySitePermissionsToWebview(active.webview, active.url).catch(() => {});
+	}
 }
 
 async function saveZoomFactor(url, factor) {
@@ -932,11 +1033,6 @@ async function loadBrowserSettings() {
 		bkMB.style.display = show ? "flex" : "none";
 		bkMB.classList.toggle("displayed", show);
 	}
-	await window.battery.getInfo().then((info) => {
-		updateBatteryUI(info.level, info.charging)
-	});
-
-
 }
 
 function getBatteryIcon(level, isCharging) {
@@ -1085,6 +1181,8 @@ function hexToRgbBitwise(hex) {
 	const rgb = parseColorToRgb(hex);
 	return rgb || [0, 0, 0];
 }
+
+
 
 window.addEventListener("message", (event) => {
 	if (event.origin !== window.origin && event.origin !== 'null' && event.origin !== '') return;
@@ -1453,7 +1551,7 @@ setTimeout(function () {
 		searchModeBtn.onclick = () => {
 			createContextMenu([
 				{ icType: 'GF', icon: 'bookmarks', name: 'Bookmarks', category: 'Set Search Mode', function: () => { startSearchMode('bookmark') } },
-				{ icType: 'GF', icon: 'history', name: 'History', category: 'Set Search Mode', function: () => { startSearchMode('history') } }
+				// { icType: 'GF', icon: 'history', name: 'History', category: 'Set Search Mode', function: () => { startSearchMode('history') } }
 			], searchModeBtn)
 		}
 	}
@@ -1757,23 +1855,9 @@ document.getElementById('viewWebsiteInfo').addEventListener('click', async funct
 		});
 	}
 
-	// Permissions for this site
-	const permissions = ['notifications', 'geolocation', 'camera', 'microphone', 'clipboard-read', 'clipboard-write'];
-	const permItems = [];
-	for (const perm of permissions) {
-		const decision = await loadPermission(u.origin, perm);
-		permItems.push({
-			icon: decision === 'allow' ? 'check_circle' : decision === 'deny' ? 'cancel' : 'help',
-			icType: 'GF',
-			name: `${perm}: ${decision || 'Not set'}`,
-			category: 'Permissions',
-			function: () => managePermission(u.origin, perm)
-		});
-	}
 	items.push(
 		{
-			icon: 'security', icType: 'GF', name: 'Permissions', category: 'Security',
-			submenu: permItems
+			icon: 'security', icType: 'GF', name: 'View All Permissions', category: 'Security', function: () => { openSidebarApp(`pages/settings/managePermissions.html?url=${getBaseURL(getActive().url)}`, 'Manage Permissions', true) }
 		},
 		{ icon: 'search_insights', icType: 'GF', name: 'About this site', category: 'Learn More', function: () => { openSidebarApp(makeSearchUrl(shortUrl), 'About this Site'), false } }
 	);
@@ -1864,7 +1948,7 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 });
 
 window.permissionsAPI.onRequest(async ({ requestId, origin, permission }) => {
-	const existing = await loadPermission(origin, permission);
+	const existing = await window.permissionsAPI.getDecision(origin, permission);
 	if (existing === 'allow') {
 		window.permissionsAPI.respond(requestId, origin, permission, true);
 		return;
@@ -1886,7 +1970,7 @@ window.permissionsAPI.onRequest(async ({ requestId, origin, permission }) => {
 	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'), undefined, undefined);
 	popup.classList.add('permission-prompt');
 	document.getElementById('denyPerm').onclick = async () => {
-		await savePermission(origin, permission, 'deny');
+		await window.permissionsAPI.saveDecision(origin, permission, 'deny');
 		window.permissionsAPI.respond(requestId, origin, permission, false);
 		popup.remove();
 	};
@@ -1895,12 +1979,12 @@ window.permissionsAPI.onRequest(async ({ requestId, origin, permission }) => {
 		popup.remove();
 	};
 	document.getElementById('allowAlways').onclick = async () => {
-		await savePermission(origin, permission, 'allow');
+		await window.permissionsAPI.saveDecision(origin, permission, 'allow');
 		window.permissionsAPI.respond(requestId, origin, permission, true);
 		popup.remove();
 	};
 	document.getElementById('never').onclick = async () => {
-		await savePermission(origin, permission, 'deny');
+		await window.permissionsAPI.saveDecision(origin, permission, 'deny');
 		window.permissionsAPI.respond(requestId, origin, permission, false);
 		popup.remove();
 	};
@@ -2418,31 +2502,40 @@ function createTab(url, opts = {}) {
 	const id = crypto.randomUUID();
 	const shortId = generateUniqueShortId('tab', 8);
 
+	// --- Webview Creation ---
 	const wv = document.createElement('webview');
 	wv.src = url;
 	wv.id = shortId;
+	applySitePermissionsToWebview(wv, url).catch(() => {});
+	wv.addEventListener('did-navigate', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => {}));
+	wv.addEventListener('did-navigate-in-page', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => {}));
 
 	const isPrivateTab = Boolean(opts.private);
-	wv.setAttribute("preload", "preload.js");
-	wv.setAttribute('allowpopups', 'false');
-	wv.setAttribute('allow', 'allow="autoplay; picture-in-picture"');
-	wv.setAttribute('webpreferences', 'contextIsolation=yes, nativeWindowOpen=yes');
-	wv.setAttribute('partition', isPrivateTab ? `temp:private-${shortId}` : `persist:${activeProfile}`);
+	const isInternal = url.startsWith('file://');
 
-	const userAgent = isMac
+	// Preload
+	wv.setAttribute("preload", "preload.js");
+
+	// Permissions
+	wv.setAttribute('allowpopups', 'false');
+	wv.setAttribute('allow', 'autoplay; picture-in-picture; microphone; camera; geolocation; midi; encrypted-media; display-capture; fullscreen; clipboard-read; clipboard-write');
+	wv.setAttribute('webpreferences', 'contextIsolation=yes, nativeWindowOpen=yes');
+
+	// Partition
+	wv.setAttribute(
+		'partition',
+		isPrivateTab ? `temp:private-${shortId}` : `persist:${activeProfile}`
+	);
+
+	// User Agent
+	const baseUA = isMac
 		? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 		: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
-	wv.setAttribute('useragent', userAgent);
 
-	const isInternal = url.startsWith('file://')
-	if (isInternal) {
-		wv.preload = 'preload.js';
-		const userAgent = isMac
-			? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 BluebirdBrowser 1.2.0"
-			: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 BluebirdBrowser 1.2.0";
-		wv.setAttribute('useragent', userAgent);
-	}
+	const finalUA = isInternal ? `${baseUA} BluebirdBrowser 1.2.0` : baseUA;
+	wv.setAttribute('useragent', finalUA);
 
+	// Style
 	Object.assign(wv.style, {
 		zIndex: '-1',
 		flex: '1',
@@ -2451,6 +2544,7 @@ function createTab(url, opts = {}) {
 		position: 'absolute'
 	});
 
+	// --- Tab Object ---
 	const tab = {
 		id,
 		shortId,
@@ -2459,10 +2553,14 @@ function createTab(url, opts = {}) {
 		webview: wv,
 		favicon: null,
 		audio: false,
+		isPlaying: false,
 		screenshot: null,
 		tabElement: null,
 		isPrivate: isPrivateTab,
-	}
+		listeners: [] // Store all event listeners for cleanup
+	};
+
+	// --- Insert Index ---
 	let insertIndex;
 	if (typeof opts.index === 'number') {
 		insertIndex = Math.max(0, Math.min(opts.index, tabs.length));
@@ -2470,23 +2568,30 @@ function createTab(url, opts = {}) {
 		const activeIndex = tabs.findIndex(t => t.id === activeTab);
 		insertIndex = activeIndex === -1 ? tabs.length : activeIndex + 1;
 	} else {
-		insertIndex = tabs.length; // append
+		insertIndex = tabs.length;
 	}
 
-	// Insert into tabs array at insertIndex
+	// Insert into tabs array
 	tabs.splice(insertIndex, 0, tab);
 
-	// Persist open tabs list, but never save private tabs.
-	localStorage.setItem('tabsOpen', JSON.stringify(tabs.filter(t => !t.isPrivate).map(t => ({
-		id: t.id,
-		shortId: t.shortId,
-		url: t.url,
-		title: t.title
-	}))));
+	// Persist open tabs (skip private)
+	localStorage.setItem(
+		'tabsOpen',
+		JSON.stringify(
+			tabs
+				.filter(t => !t.isPrivate)
+				.map(t => ({
+					id: t.id,
+					shortId: t.shortId,
+					url: t.url,
+					title: t.title
+				}))
+		)
+	);
 
-	// Insert webview into views at the same index
+	// Insert webview into DOM
 	if (views) {
-		const referenceView = views.children[insertIndex]; // may be undefined -> append
+		const referenceView = views.children[insertIndex];
 		if (referenceView) {
 			views.insertBefore(wv, referenceView);
 		} else {
@@ -2494,51 +2599,64 @@ function createTab(url, opts = {}) {
 		}
 	}
 
-	if (url == 'pages/new-tab/index.html') {
-		setTimeout(function () {
-			address.value = ''
-			address.focus()
-			address.select()
-		}, 220)
+	// New tab page auto-focus
+	if (url === 'pages/new-tab/index.html') {
+		setTimeout(() => {
+			address.value = '';
+			address.focus();
+			address.select();
+		}, 220);
 	}
 
-	// Create and insert tab element at the same index
+	// Create tab element
 	addTabElement(tab, insertIndex, true);
 
-	// Activate the new tab
+	// Activate
 	setActiveTab(id);
 
-	// --- Webview Event Wiring ---
-	wv.addEventListener("dom-ready", () => {
+	// --- Event Wiring ---
+
+	// DOM READY
+	const domReadyHandler = () => {
 		const active = getActive();
 		if (active) showTabLeftInfo(active);
 
+		// Override JS dialogs
 		wv.executeJavaScript(`
-			window.alert = (msg) => {
-				window.electronAPI.customAlert(msg);
-			};
-	
-			window.confirm = (msg) => {
-				return window.electronAPI.customConfirm(msg);
-			};
-	
-			window.prompt = (msg, def = "") => {
-				return window.electronAPI.customPrompt(msg, def);
-			};
-		`);
+            window.alert = (msg) => window.electronAPI.customAlert(msg);
+            window.confirm = (msg) => window.electronAPI.customConfirm(msg);
+            window.prompt = (msg, def = "") => window.electronAPI.customPrompt(msg, def);
+        `);
 
+		// Pass profile to new tab page
 		if (url === 'pages/new-tab/index.html') {
-			wv.executeJavaScript(`localStorage.setItem('currentProfile', '${activeProfile}');`);
+			wv.executeJavaScript(
+				`localStorage.setItem('currentProfile', '${activeProfile}');`
+			);
 		}
-	});
 
-	// --- did-start-loading ---
-	wv.addEventListener('did-start-loading', () => {
+		// Register webview and its partition session for permission handling
+		try {
+			const wcId = wv.getWebContentsId();
+			window.electronAPI?.registerWebview?.(wcId);
+			const partition = wv.getAttribute('partition');
+			if (partition) window.electronAPI?.registerPartition?.(partition);
+		} catch (err) {
+			console.warn('getWebContentsId failed:', err);
+		}
+	};
+	wv.addEventListener("dom-ready", domReadyHandler);
+	tab.listeners.push({ event: "dom-ready", handler: domReadyHandler });
+
+	// DID START LOADING
+	const startLoadingHandler = () => {
 		if (tab.spinner) tab.spinner.style.display = 'inline-block';
-	});
+	};
+	wv.addEventListener('did-start-loading', startLoadingHandler);
+	tab.listeners.push({ event: 'did-start-loading', handler: startLoadingHandler });
 
-	// --- did-stop-loading ---
-	wv.addEventListener('did-stop-loading', async () => {
+	// DID STOP LOADING
+	const stopLoadingHandler = () => {
 		const active = getActive();
 		if (active) showTabLeftInfo(active);
 
@@ -2546,145 +2664,137 @@ function createTab(url, opts = {}) {
 
 		const entry = {
 			url: wv.getURL(),
-			title: tab.title || wv.getTitle() || wv.getURL(),
-			favicon: tab.favicon || `globe`
+			title: wv.getTitle() || tab.title || wv.getURL(),
+			favicon: tab.favicon || 'globe'
 		};
 
 		setTimeout(() => {
 			addHistoryEntry(activeProfile || 'Default', entry);
 		}, 1000);
-	});
+	};
+	wv.addEventListener('did-stop-loading', stopLoadingHandler);
+	tab.listeners.push({ event: 'did-stop-loading', handler: stopLoadingHandler });
 
-	// --- did-start-navigation ---
-	wv.addEventListener('did-start-navigation', (e) => {
+	// NAVIGATION EVENTS (merged logic)
+	const handleNav = (e) => {
 		if (!e.isMainFrame) return;
 
 		tab.url = e.url;
-		const isInternal = tab.url.startsWith('file://');
-		wv.preload = isInternal ? 'preload.js' : '';
+
+		// Internal UA switch
+		const internalNow = tab.url.startsWith('file://');
+		wv.setAttribute(
+			'useragent',
+			internalNow ? `${baseUA} BluebirdBrowser 1.2.0` : baseUA
+		);
+
+		// Preload toggle
+		wv.setAttribute('preload', internalNow ? 'preload.js' : 'preload.js');
 
 		if (id === activeTab) updateAddressBar(e.url);
 
 		updateTabElement(tab);
-		address.blur();
 		updateNavButtons(wv);
 
-	});
-
-	// --- did-navigate ---
-	wv.addEventListener('did-navigate', (e) => {
 		const active = getActive();
 		if (active) showTabLeftInfo(active);
 
-		if (!e.isMainFrame) return;
+		if (id === activeTab) address.blur();
+	};
 
-		tab.url = e.url;
-		if (id === activeTab) updateAddressBar(e.url);
+	wv.addEventListener('did-start-navigation', handleNav);
+	tab.listeners.push({ event: 'did-start-navigation', handler: handleNav });
 
-		updateTabElement(tab);
-		updateNavButtons(wv);
+	wv.addEventListener('did-navigate', handleNav);
+	tab.listeners.push({ event: 'did-navigate', handler: handleNav });
 
-	});
+	wv.addEventListener('did-navigate-in-page', handleNav);
+	tab.listeners.push({ event: 'did-navigate-in-page', handler: handleNav });
 
-	// --- did-navigate-in-page ---
-	wv.addEventListener('did-navigate-in-page', (e) => {
-		const active = getActive();
-		if (active) showTabLeftInfo(active);
-
-		if (!e.isMainFrame) return;
-
-		tab.url = e.url;
-		if (id === activeTab) updateAddressBar(e.url);
-
-		updateTabElement(tab);
-		updateNavButtons(wv);
-
-	});
-
-	// --- did-finish-load ---
-	wv.addEventListener('did-finish-load', async () => {
+	// DID FINISH LOAD
+	const finishLoadHandler = async () => {
 		const active = getActive();
 		if (active) showTabLeftInfo(active);
 
 		tab.url = wv.getURL();
 		if (id === activeTab) updateAddressBar(tab.url);
 
-		wv.capturePage().then(image => {
-			tab.screenshot = image.toDataURL();
-		}).catch(err => {
-			console.warn('Screenshot capture failed for tab:', tab.dataset.id, err);
-		});
+		// Screenshot - defer to reduce memory usage
+		setTimeout(() => {
+			wv.capturePage()
+				.then(image => {
+					// Only store if tab is still active and not too many
+					if (tabs.find(t => t.id === id) && tabs.length < 10) {
+						tab.screenshot = image.toDataURL();
+					}
+				})
+				.catch(err => {
+					console.warn('Screenshot capture failed for tab:', tab.shortId, err);
+				});
+		}, 2000); // Delay to reduce CPU usage
 
+		// Zoom
 		const savedZoom = await loadZoomFactor(wv.getURL()) || loadSetting('defaultZoom');
 		if (typeof savedZoom === 'number') {
 			wv.setZoomFactor(savedZoom);
-		} else if (typeof zoomSetting === 'number') {
-			wv.setZoomFactor(zoomSetting || loadSetting('defaultZoom'));
 		}
 
 		updateTabElement(tab);
 		updateNavButtons(wv);
-	});
+	};
+	wv.addEventListener('did-finish-load', finishLoadHandler);
+	tab.listeners.push({ event: 'did-finish-load', handler: finishLoadHandler });
 
-	// --- page-title-updated ---
-	wv.addEventListener('page-title-updated', (e) => {
+	// TITLE UPDATED
+	const titleUpdatedHandler = (e) => {
 		tab.title = e.title || tab.url;
 		updateTabElement(tab);
-	});
+	};
+	wv.addEventListener('page-title-updated', titleUpdatedHandler);
+	tab.listeners.push({ event: 'page-title-updated', handler: titleUpdatedHandler });
 
-	// --- page-favicon-updated ---
-	wv.addEventListener('page-favicon-updated', (e) => {
+	// FAVICON UPDATED
+	const faviconUpdatedHandler = (e) => {
 		tab.favicon = e.favicons?.[0] || null;
 		updateTabElement(tab);
-	});
+	};
+	wv.addEventListener('page-favicon-updated', faviconUpdatedHandler);
+	tab.listeners.push({ event: 'page-favicon-updated', handler: faviconUpdatedHandler });
 
-	// --- media-started-playing ---
-	wv.addEventListener('media-started-playing', () => {
+	// MEDIA EVENTS
+	const mediaStartedHandler = () => {
 		tab.audio = true;
 		tab.isPlaying = true;
 		updateTabElement(tab);
-	});
-
-	// --- media-paused ---
-	wv.addEventListener('media-paused', () => {
-		tab.isPlaying = false;
-		tab.audio = false;
-		updateTabElement(tab);
-	});
-
-	// --- dom-ready (second listener) ---
-	wv.addEventListener('dom-ready', () => {
-		try {
-			const wcId = wv.getWebContentsId();
-			if (window.electronAPI?.registerWebview) {
-				window.electronAPI.registerWebview(wcId);
-			}
-		} catch (err) {
-			console.warn('getWebContentsId failed:', err);
-		}
-	});
-
-	// --- did-attach ---
-	wv.addEventListener('did-attach', () => {
-		window.electronAPI.registerWebview(wv.getWebContentsId());
-	});
-
-
-	attachFindEvents(wv)
-
-	wv.addEventListener('click', () => {
-		removeContextMenus();
-	});
-
-	tabHistory[shortId] = {
-		stack: [],
-		index: -1
 	};
+	wv.addEventListener('media-started-playing', mediaStartedHandler);
+	tab.listeners.push({ event: 'media-started-playing', handler: mediaStartedHandler });
+
+	const mediaPausedHandler = () => {
+		tab.audio = false;
+		tab.isPlaying = false;
+		updateTabElement(tab);
+	};
+	wv.addEventListener('media-paused', mediaPausedHandler);
+	tab.listeners.push({ event: 'media-paused', handler: mediaPausedHandler });
+
+	// CLICK → remove context menus
+	const clickHandler = () => removeContextMenus();
+	wv.addEventListener('click', clickHandler);
+	tab.listeners.push({ event: 'click', handler: clickHandler });
+
+	// FIND EVENTS
+	attachFindEvents(wv, tab);
+
+	// HISTORY STACK
+	tabHistory[shortId] = { stack: [], index: -1 };
 	attachHistoryListeners(wv, shortId, tab);
+
 	showTabLeftInfo(tab);
 
 	return tab;
 }
+
 
 window.confirm = () => {
 	console.log('Confirm')
@@ -2728,28 +2838,25 @@ function loadErrorPage(webview, code, desc = "") {
 
 
 function attachHistoryListeners(webview, shortId, info) {
+	tabHistory[shortId]._listeners = []; // store refs
+
 	const record = () => {
 		if (tabHistory[shortId].suppress) {
 			tabHistory[shortId].suppress = false;
-			return
+			return;
 		}
 		const h = tabHistory[shortId];
-
-		h.stack = h.stack.slice(0, h.index + 1);
-
-		h.stack.push({
-			title: info.title,
-			url: webview.getURL(),
-			title: info.title || webview.getTitle(),
-			favicon: info.favicon || ""
-		});
-
+		// Cap history stack to prevent infinite growth
+		if (h.stack.length > 50) h.stack.shift(); // keep last 50 only
+		h.stack.push(webview.getURL());
 		h.index = h.stack.length - 1;
 	};
 
+	webview.addEventListener('did-navigate', record);
+	tabHistory[shortId]._listeners.push({ event: 'did-navigate', fn: record });
 
-	webview.addEventListener("did-navigate", record);
-	webview.addEventListener("did-navigate-in-page", record);
+	webview.addEventListener('did-navigate-in-page', record);
+	tabHistory[shortId]._listeners.push({ event: 'did-navigate-in-page', fn: record });
 }
 
 function getTabHistory(shortId) {
@@ -2792,32 +2899,81 @@ function getTabInfo(identifier) {
 	};
 }
 
-function closeTab(id) {
-	const idx = tabs.findIndex(t => t.id === id);
-	if (idx === -1) return;
+async function closeTab(tabId) {
+	const tabData = tabs.find(t => t.id === tabId);
+	if (!tabData) return;
 
-	const tab = tabs[idx];
-	if (tab?.pinned) {
-		console.warn('Cannot close a pinned tab');
-		return;
+	const shortId = tabData.shortId;
+	const webview = tabData.webview;
+	const tabEl = tabData.tabElement;
+
+	// Determine new active tab BEFORE removal
+	const closingIndex = tabs.findIndex(t => t.id === tabId);
+	let newActiveTabId = null;
+
+	if (closingIndex > 0) {
+		newActiveTabId = tabs[closingIndex - 1].id;
+	} else if (closingIndex === 0 && tabs.length > 1) {
+		newActiveTabId = tabs[1].id;
 	}
 
-	tabs.splice(idx, 1);
-	tab.webview.remove();
-	removeTabElement(id);
+	// --- PLAY CLOSING ANIMATION ---
+	if (tabEl) {
+		tabEl.classList.add("close-animation");
 
-	if (activeTab === id) {
-		const next = tabs[idx] || tabs[idx - 1] || tabs[0];
-		activeTab = next ? next.id : null;
-		if (next) setActiveTab(next.id);
+		// Wait for transition end (Chrome-style width collapse)
+		await new Promise(resolve => {
+			const done = () => {
+				tabEl.removeEventListener("transitionend", done);
+				resolve();
+			};
+			tabEl.addEventListener("transitionend", done);
+		});
 	}
 
-	const hasPinned = tabs.some(t => t.pinned);
-	if (tabs.length === 0 && !hasPinned) {
+	// --- KILL WEBVIEW ---
+	if (webview) {
+		try { webview.stop(); } catch { }
+		try { webview.clearHistory(); } catch { }
+		try { webview.remove(); } catch { }
+
+		webview.src = "about:blank";
+		setTimeout(() => webview.destroy?.(), 100);
+	}
+
+	// --- REMOVE LISTENERS ---
+	if (tabData.listeners) {
+		tabData.listeners.forEach(({ event, handler }) => {
+			try { webview.removeEventListener(event, handler); } catch { }
+		});
+		delete tabData.listeners;
+	}
+
+	if (tabHistory[shortId]?._listeners) {
+		tabHistory[shortId]._listeners.forEach(({ event, fn }) => {
+			try { webview.removeEventListener(event, fn); } catch { }
+		});
+	}
+
+	// --- CLEAN REFERENCES ---
+	delete tabHistory[shortId];
+	tabs = tabs.filter(t => t.id !== tabId);
+
+	// Remove tab element AFTER animation
+	tabEl?.remove();
+
+	// --- ACTIVATE NEW TAB ---
+	if (newActiveTabId) {
+		setActiveTab(newActiveTabId);
+	} else {
+		activeTab = null;
+		updateAddressBar("");
+		updateNavButtons(null);
+	}
+
+	if (tabs.length <= 0) {
 		window.close();
 	}
-
-	showTabLeftInfo(getActive());
 }
 
 function setActiveTab(id) {
@@ -2830,6 +2986,9 @@ function setActiveTab(id) {
 	});
 
 	const tab = tabs.find(t => t.id === id);
+	if (!tab) {
+		return;
+	}
 	if (tab && address) {
 		let displayUrl = tab.url;
 		const withoutHttp = displayUrl.split("//");
@@ -2855,6 +3014,13 @@ function setActiveTab(id) {
 function getActive() {
 	return tabs.find(t => t.id === activeTab);
 }
+
+window.reloadActiveWebview = function () {
+	const active = getActive();
+	if (active?.webview?.reload) {
+		active.webview.reload();
+	}
+};
 
 // --- Bookmarks ---
 if (bookmarkBtn) {
@@ -3210,33 +3376,37 @@ overflowBtn.addEventListener("click", (e) => {
 		});
 	});
 
+	let popupRafId = null;
+	let popupAlive = false;
+
 	function updatePopup() {
-		if (!alive || !document.body.contains(pop)) return;
+		if (!popupAlive || document.hidden) {
+			cancelAnimationFrame(popupRafId);
+			popupRafId = null;
+			return;
+		}
 
-		const rows = pop.querySelectorAll(".tab-on-overflow-menu");
+		//... your update logic
 
-		rows.forEach((row, i) => {
-			const tab = row.classList.contains("hidden-tab")
-				? hidden[i - visible.length]
-				: visible[i];
-
-			if (!tab) return;
-
-			const isAudio = tab.dataset.audio === "true";
-			const isMuted = tab.dataset.muted === "true";
-
-			const iconWrap = row.querySelector(".icon-wrap");
-			const titleEl = row.querySelector("p");
-
-			titleEl.textContent = tab.dataset.title;
-
-			iconWrap.innerHTML = isAudio
-				? `<i class="material-symbols-rounded">${isMuted ? "volume_off" : "volume_up"}</i><p>${tab.dataset.title}</p>`
-				: `<img src="${tab.dataset.favicon}"><p>${tab.dataset.title}</p>`;
-		});
-
-		requestAnimationFrame(updatePopup);
+		popupRafId = requestAnimationFrame(updatePopup);
 	}
+
+	function showPopup() {
+		popupAlive = true;
+		if (!popupRafId) popupRafId = requestAnimationFrame(updatePopup);
+	}
+
+	function hidePopup() {
+		popupAlive = false;
+		cancelAnimationFrame(popupRafId);
+		popupRafId = null;
+		pop.remove();
+	}
+
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden) cancelAnimationFrame(popupRafId);
+		else if (popupAlive) popupRafId = requestAnimationFrame(updatePopup);
+	});
 
 	requestAnimationFrame(updatePopup);
 });
@@ -3296,14 +3466,17 @@ function openFindPopup(elementClicked = null, x = 0, y = 0) {
 
 	document.body.appendChild(findPopup);
 
-	const input = findPopup.querySelector("#findInput");
-	const prevBtn = findPopup.querySelector("#findPrev");
-	const nextBtn = findPopup.querySelector("#findNext");
+	const input = findPopup?.querySelector("#findInput");
+	const prevBtn = findPopup?.querySelector("#findPrev");
+	const nextBtn = findPopup?.querySelector("#findNext");
 
+	if (input) {
+		input.focus();
+		input.oninput = () => doFind(true);
+	}
 
-	input.focus();
-
-	input.oninput = () => doFind(true);
+	if (nextBtn) nextBtn.onclick = () => doFind(true);
+	if (prevBtn) prevBtn.onclick = () => doFind(false);
 
 	nextBtn.onclick = () => doFind(true);
 	prevBtn.onclick = () => doFind(false);
@@ -3345,9 +3518,15 @@ function doFind(forward = true) {
 	});
 }
 
-function attachFindEvents(wv) {
-	wv.addEventListener("found-in-page", (e) => {
+function attachFindEvents(wv, tab) {
+	const foundHandler = (e) => {
 		const { activeMatchOrdinal, matches } = e.result;
+
+		if (matches == 0) {
+			if (text === '') {
+				a.webview.stopFindInPage("clearSelection");
+			}
+		}
 
 		currentFindIndex = activeMatchOrdinal;
 		currentFindTotal = matches;
@@ -3356,7 +3535,10 @@ function attachFindEvents(wv) {
 		if (countEl) {
 			countEl.textContent = matches ? `${activeMatchOrdinal}/${matches}` : "0/0";
 		}
-	});
+	};
+
+	wv.addEventListener("found-in-page", foundHandler);
+	if (tab?.listeners) tab.listeners.push({ event: "found-in-page", handler: foundHandler });
 }
 
 // KEYBOARD SHORTCUTS -------------------------------------------------------
@@ -3789,11 +3971,19 @@ function updateAddressBar(url = '') {
 
 function updateNavButtons(webview) {
 	if (!backBtn || !fwdBtn || !webview) return;
-	if (typeof webview.canGoBack === 'function') {
-		backBtn.classList.toggle('disabled', !webview.canGoBack());
+	try {
+		if (typeof webview.canGoBack === 'function') {
+			backBtn.classList.toggle('disabled', !webview.canGoBack());
+		}
+	} catch (err) {
+		console.warn('Unable to update back button state:', err);
 	}
-	if (typeof webview.canGoForward === 'function') {
-		fwdBtn.classList.toggle('disabled', !webview.canGoForward());
+	try {
+		if (typeof webview.canGoForward === 'function') {
+			fwdBtn.classList.toggle('disabled', !webview.canGoForward());
+		}
+	} catch (err) {
+		console.warn('Unable to update forward button state:', err);
 	}
 }
 
@@ -4509,7 +4699,7 @@ async function openMainContextMenu(elementClicked = moreBtn, x = 0, y = 0) {
 			icon: 'bookmark', icType: 'GF', name: 'Bookmarks & Saved Pages', category: 'Lists',
 			submenu: [
 				{
-					icon: 'collections_bookmark', icType: 'GF', name: 'Manage Bookmarks', category: "Manage",
+					icon: 'collections_bookmark', icType: 'GF', name: 'Manage & View All Bookmarks', category: "Manage",
 					function: () => openSidebarApp('pages/managers/index.html?manager=bookmarks', 'Manager', true)
 				},
 				{
@@ -4526,8 +4716,7 @@ async function openMainContextMenu(elementClicked = moreBtn, x = 0, y = 0) {
 					}
 				},
 
-				// dynamically inject bookmarks
-				...bookmarks.map(b => {
+				...bookmarks.slice(0, 17).map(b => {
 					return {
 						icon: b.favicon || 'bookmark',
 						icType: b.favicon ? 'img' : 'GF',

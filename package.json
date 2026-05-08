@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/coder230-dev/bluebird_browser.git"
   },
-  "version": "2.0.0-prerelease.1",
+  "version": "2.0.0",
   "description": "",
   "main": "main.js",
   "build": {

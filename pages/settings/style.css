@@ -58,6 +58,14 @@ body {
 	user-select: none;
 }
 
+nav {
+    margin: 0 10px;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 12px;
+    border-bottom: 1px solid var(--scheme-9);
+}
+
 details {
     padding: 1px;
     background: var(--scheme-5);

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Permissions</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .permissions-list {
+            display: grid;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .permission-row {
+            display: grid;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .permission-row .permission-meta {
+            display: grid;
+            gap: 4px;
+        }
+
+        .permission-row .permission-name {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .permission-row .permission-help {
+            color: var(--text-muted, #9b9b9b);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .permission-actions {
+            display: grid;
+            align-items: start;
+        }
+
+        .permission-actions select {
+            min-width: 180px;
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: var(--card-bg, #1d1f25);
+            color: var(--text-primary, #f2f2f2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .notice-box {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            background: rgba(29, 161, 242, 0.12);
+            border: 1px solid rgba(29, 161, 242, 0.22);
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .notice-box.hidden {
+            display: none;
+        }
+
+        .notice-box button {
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            color: #fff;
+            background: #1da1f2;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            margin-top: 18px;
+            color: var(--text-muted, #999);
+        }
+    </style>
+</head>
+
+<body>
+    <nav id="url-name">
+        <div>
+            <b>Manage Permissions</b>
+            <p style="padding: 0; margin: 2px 0 0 0;" id="base-url">Loading...</p>
+        </div>
+    </nav>
+    <section class="setting-section">
+        <h3>Manage your Permissions</h3>
+        <p>This will only be applied on the site listed in the navbar.</p>
+
+        <div id="reloadNotice" class="notice-box hidden">
+            <div>Permission changes have been saved. Reload the page to apply them.</div>
+            <button id="reloadPage">Reload page</button>
+        </div>
+
+        <div class="card">
+            <div class="flex">
+                <h3>Site Permissions</h3>
+            </div>
+            <div id="permissionsContainer" class="permissions-list"></div>
+            <div id="emptyState" class="empty-state hidden">No site specified. Open this panel from a page and try again.</div>
+        </div>
+    </section>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        let siteUrl = params.get('url') || '';
+        const permissionAPI = window.parent?.permissionsAPI || window.permissionsAPI;
+
+        if (!siteUrl && window.parent?.getActive) {
+            const active = window.parent.getActive();
+            if (active?.url) {
+                siteUrl = active.url;
+            }
+        }
+
+        const baseUrlEl = document.getElementById('base-url');
+        const permissionsContainer = document.getElementById('permissionsContainer');
+        const reloadNotice = document.getElementById('reloadNotice');
+        const emptyState = document.getElementById('emptyState');
+        const reloadBtn = document.getElementById('reloadPage');
+
+        const PERMISSIONS = [
+            { key: 'media', label: 'Media', help: 'Camera and microphone access.' },
+            { key: 'camera', label: 'Camera', help: 'Allows camera access.' },
+            { key: 'microphone', label: 'Microphone', help: 'Allows microphone access.' },
+            { key: 'geolocation', label: 'Location', help: 'Allows the site to request your location.' },
+            { key: 'notifications', label: 'Notifications', help: 'Allows the site to show notifications.' },
+            { key: 'midi', label: 'MIDI', help: 'Allows MIDI device access.' },
+            { key: 'midiSysex', label: 'MIDI Sysex', help: 'Allows MIDI Sysex device access.' },
+            { key: 'pointerLock', label: 'Pointer Lock', help: 'Allows the site to lock the mouse pointer.' },
+            { key: 'fullscreen', label: 'Fullscreen', help: 'Allows fullscreen mode.' },
+            { key: 'openExternal', label: 'Open External', help: 'Allows opening external applications or links.' },
+            { key: 'display-capture', label: 'Screen Capture', help: 'Allows screen and window capture.' },
+            { key: 'audioCapture', label: 'Audio Capture', help: 'Allows audio capture from the system.' },
+            { key: 'protectedMediaIdentifier', label: 'Protected Media', help: 'Allows access to protected media identifiers.' },
+            { key: 'clipboard-read', label: 'Clipboard Read', help: 'Allows reading data from the clipboard.' },
+            { key: 'clipboard-write', label: 'Clipboard Write', help: 'Allows writing data to the clipboard.' },
+            { key: 'persistent-storage', label: 'Persistent Storage', help: 'Allows the site to store data persistently.' }
+        ];
+
+        function normalizeSite(value) {
+            if (!value) return '';
+            const trimmed = String(value).trim();
+            try {
+                if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+                    const u = new URL(trimmed);
+                    if (u.protocol === 'file:') return 'file://';
+                    return u.origin.replace(/^https?:\/\//, '');
+                }
+                const u = new URL(`https://${trimmed}`);
+                return u.origin.replace(/^https?:\/\//, '');
+            } catch {
+                return trimmed;
+            }
+        }
+
+        function showReloadNotice() {
+            reloadNotice.classList.remove('hidden');
+        }
+
+        async function buildPermissions() {
+            const normalizedSite = normalizeSite(siteUrl);
+            if (!normalizedSite) {
+                baseUrlEl.textContent = 'No site specified';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            baseUrlEl.textContent = normalizedSite;
+            emptyState.classList.add('hidden');
+            permissionsContainer.innerHTML = '';
+
+            const currentPermissions = permissionAPI?.getAll
+                ? await permissionAPI.getAll(normalizedSite)
+                : {};
+
+            PERMISSIONS.forEach((permission) => {
+                const currentDecision = currentPermissions[permission.key] || 'default';
+                const row = document.createElement('div');
+                row.className = 'permission-row';
+                row.innerHTML = `
+                    <div class="permission-meta">
+                        <div class="permission-name">${permission.label}</div>
+                        <div class="permission-help">${permission.help}</div>
+                    </div>
+                    <div class="permission-actions">
+                        <select data-permission="${permission.key}">
+                            <option value="default">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="deny">Deny</option>
+                        </select>
+                    </div>
+                `;
+
+                const select = row.querySelector('select');
+                select.value = currentDecision;
+                select.addEventListener('change', async (event) => {
+                    if (permissionAPI?.saveDecision) {
+                        await permissionAPI.saveDecision(normalizedSite, permission.key, event.target.value);
+                        showReloadNotice();
+                    }
+                });
+                permissionsContainer.appendChild(row);
+            });
+        }
+
+        reloadBtn.addEventListener('click', () => {
+            if (window.parent?.reloadActiveWebview) {
+                window.parent.reloadActiveWebview();
+            } else if (window.parent?.location) {
+                window.parent.location.reload();
+            } else {
+                window.location.reload();
+            }
+        });
+
+        buildPermissions().catch((error) => {
+            console.error('Failed to load permission manager:', error);
+            baseUrlEl.textContent = 'Unable to load permissions';
+        });
+    </script>
+</body>
+
+</html>

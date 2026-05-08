@@ -174,7 +174,7 @@ async function loadProfileSetting() {
 				<span>Manage & Edit Profile Info</span>
 				<i class="material-symbols-rounded">open_in_new</i>
 			</button>
-			<button class="wide-btn flex-sb" onclick="window.electronAPI?.openAppPage?.('pages/profilePages/profileManager.html',700,700,'Default');">
+			<button class="wide-btn flex-sb" onclick="window.electronAPI?.openAppPage?.('pages/profilePages/profileManager.html',800,800,'Default');">
 				<span>Open Profile Manager</span>
 				<i class="material-symbols-rounded">open_in_new</i>
 			</button>

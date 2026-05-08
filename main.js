@@ -18,6 +18,7 @@ const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 const profilesPath = path.join(app.getPath('userData'), 'profiles.json');
 const boundsPath = path.join(app.getPath('userData'), 'window-bounds.json');
 const passwordsPath = path.join(app.getPath('userData'), 'passwords.json');
+const permissionsPath = path.join(app.getPath('userData'), 'permissions.json');
 
 let updateInfo = {
 	updateAvaiable: false,
@@ -26,6 +27,39 @@ let updateInfo = {
 
 let openTabs = [];
 const webviews = new Set();
+const permissionHandlerSessions = new WeakSet();
+
+function ensurePermissionHandler(sesObj) {
+	if (!sesObj || permissionHandlerSessions.has(sesObj)) return;
+	sesObj.setPermissionRequestHandler((webContents, permission, callback) => {
+		const origin = webContents.getURL();
+		const hostWindow = webContents.hostWebContents || BrowserWindow.fromWebContents(webContents);
+		if (!hostWindow || hostWindow.isDestroyed()) {
+			callback(false);
+			return;
+		}
+
+		const decision = getPermissionDecision(origin, permission);
+		if (decision === 'allow') {
+			callback(true);
+			return;
+		}
+		if (decision === 'deny') {
+			callback(false);
+			return;
+		}
+
+		const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+		const timer = setTimeout(() => {
+			pendingPermissionRequests.delete(requestId);
+			callback(false);
+		}, 30000);
+
+		pendingPermissionRequests.set(requestId, { callback, timer });
+		hostWindow.send('permission-request', { requestId, origin, permission });
+	});
+	permissionHandlerSessions.add(sesObj);
+}
 
 // ============= UTILITY FUNCTIONS =============
 function loadProfilesJSON() {
@@ -64,6 +98,61 @@ function sendToWindow(target, channel, data = {}) {
 function getSafeWindow() {
 	const target = BrowserWindow.getFocusedWindow();
 	return (target && !target.isDestroyed()) ? target : null;
+}
+
+function normalizeSiteUrl(url) {
+	if (!url) return '';
+	try {
+		const u = new URL(url);
+		if (u.protocol === 'file:') return 'file://';
+		return u.origin.replace(/^https?:\/\//, '');
+	} catch (err) {
+		return String(url).trim();
+	}
+}
+
+function loadPermissionsJSON() {
+	if (!fs.existsSync(permissionsPath)) return {};
+	try {
+		const data = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'));
+		return data && typeof data === 'object' ? data : {};
+	} catch (err) {
+		console.warn('Failed to parse permissions.json:', err.message);
+		return {};
+	}
+}
+
+function savePermissionsJSON(data) {
+	try {
+		fs.writeFileSync(permissionsPath, JSON.stringify(data, null, 2));
+	} catch (err) {
+		console.warn('Failed to save permissions.json:', err.message);
+	}
+}
+
+function getPermissionDecision(origin, permission) {
+	const normalizedOrigin = normalizeSiteUrl(origin);
+	const permissions = loadPermissionsJSON();
+	return permissions[normalizedOrigin]?.[permission];
+}
+
+function setPermissionDecision(origin, permission, decision) {
+	const normalizedOrigin = normalizeSiteUrl(origin);
+	const permissions = loadPermissionsJSON();
+	permissions[normalizedOrigin] = permissions[normalizedOrigin] || {};
+	if (decision === 'default' || decision === undefined || decision === null) {
+		delete permissions[normalizedOrigin][permission];
+	} else {
+		permissions[normalizedOrigin][permission] = decision;
+	}
+	if (Object.keys(permissions[normalizedOrigin]).length === 0) {
+		delete permissions[normalizedOrigin];
+	}
+	savePermissionsJSON(permissions);
+}
+
+function getPermissionsForOrigin(origin) {
+	return loadPermissionsJSON()[normalizeSiteUrl(origin)] || {};
 }
 
 async function updateApplicationMenu(win) {
@@ -725,7 +814,7 @@ async function buildAppMenu(win) {
 				...profilesSubmenu,
 				{ type: 'separator' },
 				{ label: 'Add Profile…', click: () => loadBrowserWindow('pages/profilePages/addProfile.html', 550, 750) },
-				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 500, 700) }
+				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 800, 800) }
 			]
 		},
 		{
@@ -1149,11 +1238,13 @@ app.whenReady().then(async () => {
 	ensureProfile(currentProfile);
 
 	// Open the account manager window first and build menu with that win
-	const mgrWin = loadBrowserWindow(`pages/profilePages/profileManager.html`, 700, 700, undefined);
+	const mgrWin = loadBrowserWindow(`pages/profilePages/profileManager.html`, 800, 800, undefined);
 	const menu = await buildAppMenu(mgrWin);
 	Menu.setApplicationMenu(menu);
 
 	const ses = session.defaultSession
+
+	ensurePermissionHandler(ses);
 
 	const adBlockPatterns = [
 		'doubleclick.net',
@@ -1195,24 +1286,6 @@ app.whenReady().then(async () => {
 		return callback({ cancel: false });
 	});
 
-	ses.setPermissionRequestHandler((webContents, permission, callback) => {
-		const origin = webContents.getURL();
-		const hostWindow = webContents.hostWebContents || BrowserWindow.fromWebContents(webContents);
-		if (!hostWindow || hostWindow.isDestroyed()) {
-			callback(false);
-			return;
-		}
-
-		const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-		const timer = setTimeout(() => {
-			pendingPermissionRequests.delete(requestId);
-			callback(false);
-		}, 30000);
-
-		pendingPermissionRequests.set(requestId, { callback, timer });
-		hostWindow.send('permission-request', { requestId, origin, permission });
-	});
-
 	const dockMenu = Menu.buildFromTemplate([
 		{
 			label: 'New Window',
@@ -1221,7 +1294,7 @@ app.whenReady().then(async () => {
 		{
 			label: 'Profile',
 			submenu: [
-				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 500, 700) }
+				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 800, 800) }
 			]
 		}
 	])
@@ -1232,6 +1305,27 @@ app.whenReady().then(async () => {
 		initAutoUpdater();
 	}
 
+});
+
+ipcMain.on('register-partition', (_event, partition) => {
+	try {
+		const partitionSession = session.fromPartition(partition, { cache: true });
+		ensurePermissionHandler(partitionSession);
+	} catch (err) {
+		console.warn('Failed to register partition for permissions:', partition, err.message);
+	}
+});
+
+ipcMain.handle('permission-query', (_event, { origin, permission }) => {
+	return getPermissionDecision(origin, permission);
+});
+
+ipcMain.handle('permission-get-all', (_event, { origin }) => {
+	return getPermissionsForOrigin(origin);
+});
+
+ipcMain.on('permission-save', (_event, { origin, permission, decision }) => {
+	setPermissionDecision(origin, permission, decision);
 });
 
 app.on("open-url", (event, url) => {
@@ -1261,7 +1355,7 @@ ipcMain.handle('app:getVersion', () => {
 
 app.on('activate', () => {
 	if (BrowserWindow.getAllWindows().length === 0) {
-		const mgrWin = loadBrowserWindow('pages/profilePages/profileManager.html', 900, 900, undefined);
+		const mgrWin = loadBrowserWindow('pages/profilePages/profileManager.html', 800, 800, undefined);
 		buildAppMenu(mgrWin).then(menu => Menu.setApplicationMenu(menu));
 	}
 });
