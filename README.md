@@ -2,55 +2,122 @@
 
 ![Browser Screenshot](images/coverImg.png)
 
-Bluebird Browser is a lightweight, privacy-focused web browser designed for speed and simplicity. Built with modern web technologies, it offers features like ad-blocking, tab management, and customizable themes to enhance your browsing experience. Perfect for developers and everyday users seeking an alternative to mainstream browsers.
+Bluebird Browser is a lightweight, privacy-first web browser built with Electron and modern web technologies. It emphasizes speed, simplicity, and customization while staying friendly for both developers and everyday users.
 
+## Table of Contents
 
-### Features
-- **Tab Management**: Easy-to-use interface for organizing multiple tabs. Click the top-right tabs button.
-- **Customizable Themes**: Pick a color from the color picker from settings, then watch your browser transform.
-- **A Modern Look**: To make it easy to use by everyone.
+- [Features](#features)
+- [Preview](#preview)
+- [Built With](#built-with)
+- [Installation](#installation)
+- [Build & Packaging](#build--packaging)
+- [Downloading the Browser](#build--packaging)
+- [Supported Platforms](#supported-platforms)
+- [Usage](#usage)
+- [Future Plans](#future-plans)
+- [Contributing](#contributing)
+- [Issues](#issues)
+- [License](#license)
 
-### Future Plans
-- **Extension Support**: Plugin system for adding custom functionalities like password managers or productivity tools.
-- **Enhanced Security**: Advanced features including phishing detection, HTTPS enforcement, and integrated VPN.
-- **Mobile App Currently Planned**: iOS coming first, then Andriod. Will be built using [swift](https://swift.org).
-- **AI-Powered Suggestions**: Smart search and content recommendations based on user behavior.
-- **Performance Optimizations**: Further improvements in memory usage and battery life for extended sessions.
-- **Ad Blocking**: Built-in blocker to reduce distractions and improve privacy.
+## Features
+
+- **Tab Management**: Manage multiple tabs with a simple, intuitive interface.
+- **Customizable Themes**: Change the browser color from Settings and watch the UI update instantly.
+- **Privacy Focused**: Built with user privacy in mind and designed to reduce tracking and unwanted clutter.
+- **Lightweight UI**: A clean, modern design that stays easy to use for everyone.
+- **Ad Blocking (BETA)**: Basic ad blocking support to reduce distractions and speed up page loading.
+
+## Preview
+
+The screenshot above gives a quick look at the browser's interface and design.
+
+## Built With
+
+- [Electron](https://www.electronjs.org/)
+- HTML, CSS, and JavaScript
+- [Electron Forge](https://www.electronforge.io/)
+- [Electron Builder](https://www.electron.build/)
+
+This project used AI to build its features, with it being accepted by me.
 
 ## Installation
 
-1. Clone the repository: `git clone https://github.com/coder230-dev/bluebird_browser.git`
-2. Install dependencies: `npm install`
-3. Run the browser: `npm start`
+To run the browser locally:
 
-## Cross-platform build prerequisites
+```bash
+git clone https://github.com/coder230-dev/bluebird_browser.git
+cd bluebird_browser
+npm install
+npm start
+```
 
-- macOS
-  - Install Homebrew if you don't have it: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-  - Install Windows build runtime support: `brew install wine mono`
-  - Install Linux packaging tools if you want local Linux builds: `brew install dpkg rpm`
-- Linux
-  - Install packaging tools: `sudo apt install fakeroot dpkg-dev rpm` or the equivalent for your distro.
-- Windows
-  - Build on Windows directly for the best compatibility, or use CI.
+> Make sure you have Node.js installed before running the commands above.
 
-## Build commands
+## Build & Packaging
 
-- Build macOS: `npm run make:mac`
-- Build Windows: `npm run make:win`
-- Build Linux: `npm run make:linux`
-- Build all supported targets: `npm run make:all`
+This repository includes packaging support for macOS, Windows, and Linux.
+
+### Build commands
+
+- `npm run make:mac` — Build macOS package
+- `npm run make:win` — Build Windows package
+- `npm run make:linux` — Build Linux package
+- `npm run make:all` — Build all supported targets
+
+### Packaging notes
+
+- macOS: Uses `images/icon.icns` for the app icon.
+- Windows: Uses `images/icon.ico` for the app icon.
+- Linux: Uses `images/icon.png` for the app icon.
+
+## Supported Platforms
+
+- **macOS** — Recommended for local builds with Homebrew.
+- **Windows** — Best built directly on Windows.
+- **Linux** — Supported via standard packaging tools.
+
+### Platform prerequisites
+
+- macOS:
+  - Optional: `brew install wine mono dpkg rpm`
+- Linux:
+  - Example: `sudo apt install fakeroot dpkg-dev rpm`
+- Windows:
+  - Use local Windows build environment or CI for best results.
+
+## Downloading the Browser
+
+You can find the app in the Releases tab. Just download the .zip (Mac) or .exe (Windows) file under the latest release.
 
 ## Usage
 
-- Launch the browser and start browsing.
-- Access settings via the menu to customize themes and features.
+- Launch the application after building, or run `npm start` for development.
+- Open Settings to customize theme colors and available options.
+- Use the tab button to manage open pages and browsing sessions.
+
+## Future Plans
+
+- **Extension Support**: Add a plugin system for extensions such as password managers and productivity tools.
+- **Enhanced Security**: Add phishing protection, HTTPS enforcement, and optional VPN integration.
+- **Mobile App**: iOS first, followed by Android.
+- **AI-Powered Suggestions**: Provide smarter search results and browsing recommendations.
+- **Performance Improvements**: Reduce memory usage and optimize battery life.
+- **Ad Blocking Improvements**: Make ad blocking more robust and reliable.
+
+## Contributing
+
+Contributions are welcome! If you'd like to help, you can:
+
+- Open an issue for bugs or feature requests.
+- Submit a pull request with improvements.
+- Help document features and workflows.
+
+Please follow any contribution guidelines in the repository and keep changes small and focused.
 
 ## Issues
 
-Any issues? Please report them and I will take a look on it. Some features might be fixed by either AI or myself.
+If you encounter any issues, please report them in the repository's issue tracker. I will review them and work on fixes.
 
 ## License
 
-This project is not currently licensed.
+This project is currently unlicensed.

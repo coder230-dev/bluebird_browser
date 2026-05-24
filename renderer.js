@@ -61,20 +61,11 @@ async function setZoomSetting() {
 
 }
 
-const updateContent = `
-	<div class="update-app-content">
-		<h2>You in a BETA version</h2>
-		<p>Watch out for bugs and issues.</p>
-		<a href="" click="createTab('https://github.com/coder230-dev/bluebird_browser')">https://github.com/coder230-dev/bluebird_browser (GitHub Project)</a>
-	</div>
-`
-
 window.api.getAppVersion().then(version => {
 	appVersion = version
 
 	if (localStorage.getItem('appVer') !== version) {
-		localStorage.setItem('appVer', version)
-		createOverlayPopup(updateContent, '90%', '80vh')
+		localStorage.setItem('appVer', version);
 	}
 });
 
@@ -248,15 +239,6 @@ function formatReleaseNotes(releaseNotes) {
 		return `<pre>${JSON.stringify(releaseNotes, null, 2)}</pre>`;
 	}
 	return `<p>${String(releaseNotes)}</p>`;
-}
-
-function showWebPopup(title, url, iframe) {
-	const html = `
-		${title ? `<div class="popup-header"><h1>${title}</h1></div>` : ``}
-		${iframe ? `<iframe border="0" src="${url}"></iframe>` : `<webview src="${url}"></webview>`}
-	`
-	const pop = createOverlayPopup(html, '800px', '800px', true);
-	pop.classList.add('web-pop')
 }
 
 function showPopup(title, contentHtml, actions = []) {
