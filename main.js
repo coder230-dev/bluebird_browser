@@ -875,7 +875,7 @@ async function createWindow(profile = 'Default') {
 		minHeight: 300,
 		frame: isMac,
 		titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
-		trafficLightPosition: isMac ? { x: 12, y: 15 } : undefined,
+		trafficLightPosition: isMac ? { x: 12, y: 12 } : undefined,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			icon: path.join(__dirname, 'pages/profilePages/images/Copilot_20251122_223052.png'),
@@ -884,7 +884,7 @@ async function createWindow(profile = 'Default') {
 			webviewTag: true,
 			partition: `persist:${profile}`,
 			experimentalFeatures: true,
-			enableBlinkFeatures: 'WebAuthn SmoothScrolling',
+			enableBlinkFeatures: "WebAuthn, SmoothScrolling, WebSpeechRecognition",
 			nativeWindowOpen: true,
 			scrollBounce: true, // macOS-like bounce
 		}
@@ -1674,6 +1674,20 @@ ipcMain.handle('clear-browsing-data', async () => {
 	} catch (err) {
 		console.warn('Failed to clear browsing data:', err);
 		return false;
+	}
+});
+
+// Provide per-webview memory info (from renderer via webContents id)
+ipcMain.handle('webview:memory', async (_event, id) => {
+	try {
+		const wc = webContents.fromId(Number(id));
+		if (!wc) return null;
+		const mem = await wc.getProcessMemoryInfo();
+		const osPid = wc.getOSProcessId ? wc.getOSProcessId() : null;
+		return { mem, osPid };
+	} catch (err) {
+		console.warn('webview:memory failed', err && err.message);
+		return null;
 	}
 });
 

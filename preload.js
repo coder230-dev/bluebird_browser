@@ -278,6 +278,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	getWebviewCertificate: (id) => ipcRenderer.invoke('site-info:get', id),
 
+	// Per-webview memory info
+	getWebviewMemory: (id) => ipcRenderer.invoke('webview:memory', id),
+
 	toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 
 	// Listen for zoom updates from main

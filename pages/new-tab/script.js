@@ -1,33 +1,51 @@
 const activeMenuKeydownHandlers = new Set();
 
-document.addEventListener('load', async function () {
+console.log(window.electronAPI);
+
+let settingsArray = {};
+
+let recognition = null;
+let listening = false;
+const isSpeechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+function createRecognition(onResult) {
+    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Rec) return null;
+    const r = new Rec();
+    r.lang = 'en-US';
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (event) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const res = event.results[i];
+            const transcript = res[0].transcript;
+            if (res.isFinal) final += transcript;
+            else interim += transcript;
+        }
+        if (typeof onResult === 'function') onResult({ interim, final });
+    };
+    r.onerror = (e) => { console.warn('Speech recognition error', e); };
+    r.onend = () => {
+        listening = false;
+        if (typeof onResult === 'function') onResult({ ended: true });
+    };
+    return r;
+}
+
+window.addEventListener('DOMContentLoaded', async function () {
+    settingsArray = await loadAllSettings()
     const isBluebird =
         !!window.electronAPI ||
         navigator.userAgent.includes("BluebirdBrowser");
     console.log(isBluebird);
 
     document.getElementById('see-all-history').onclick = async () => {
-        showPopupSearchable(
-            await getAllHistory(localStorage.getItem('currentProfile')),
-            "History Manager",
-            "history",
-            {
-                profile: localStorage.getItem('currentProfile'),
-                fallbackFavicon: "history",
-                deleteRange: ms => deleteHistoryRange(localStorage.getItem('currentProfile'), ms)
-            }
-        );
+        openSidebar('history');
     }
     document.getElementById('see-all-bookmarks').onclick = async () => {
-        showPopupSearchable(
-            getBookmarks(localStorage.getItem('currentProfile')),
-            "Bookmarks Manager",
-            "bookmarks",
-            {
-                profile: localStorage.getItem('currentProfile'),
-                fallbackFavicon: "bookmarks"
-            }
-        );
+        openSidebar('bookmarks');
     }
 
     // Load theme
@@ -54,10 +72,11 @@ document.addEventListener('load', async function () {
     }
     Object.entries(theme).forEach(([key, value]) => {
         document.documentElement.style.setProperty(`--${key}`, value);
+        console.log(key + ': ' + value)
     });
 
     // System Theme
-    document.body.style.colorScheme = settings.systemTheme;
+    document.body.style.colorScheme = settings.systemTheme || 'light dark';
 
     setTimeout(async function () {
         await renderCardItems();
@@ -73,7 +92,7 @@ window.addEventListener('scroll', function () {
         cont.style.position = 'fixed';
         cont.style.zIndex = '5';
     } else {
-        cont.style.position = 'static';
+        cont.style.position = 'absolute';
         cont.style.zIndex = '0';
     }
 });
@@ -82,52 +101,105 @@ document.addEventListener('focus', async function () {
     await renderCardItems()
 })
 
-setInterval(async function () {
-    await renderCardItems();
-}, 1200)
+function isValidURL(str) {
+    try {
+        new URL(str);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
-async function renderCardItems() {
-    const bookmarksCont = document.getElementById('all-bookmarks')
-    const historyCont = document.getElementById('all-history')
-
-    const bookmarks = getBookmarks(localStorage.getItem('currentProfile'))
-    const history = await getHistoryProfile(localStorage.getItem('currentProfile'), 10)
-
-    if (!bookmarks && !history) {
-        return
+// In-page sidebar fallback (loads managers pages into a right-hand panel)
+function openSidebar(mode = 'history') {
+    const existing = document.getElementById('inpage-sidebar');
+    if (existing) {
+        existing.style.display = 'block';
+        // update iframe if needed
+        const f = existing.querySelector('iframe');
+        if (f && !f.src.includes(`manager=${mode}`)) f.src = `../managers/index.html?manager=${mode}`;
+        return;
     }
 
-    bookmarksCont.innerHTML = ``
-    historyCont.innerHTML = ``
+    const sidebar = document.createElement('div');
+    sidebar.id = 'inpage-sidebar';
 
+    const header = document.createElement('div');
+    header.className = 'inpage-sidebar-header';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'inpage-sidebar-close';
+    closeBtn.innerHTML = '<i class="material-symbols-rounded">close</i>';
+    closeBtn.onclick = () => {
+        document.querySelector('.container').style.width = 'static';
+        iframe.src = 'about:blank';
+        sidebar.remove();
+    };
+
+    const title = document.createElement('div');
+    title.className = 'inpage-sidebar-title';
+    title.textContent = mode === 'bookmarks' ? 'Bookmarks' : 'History';
+
+    header.appendChild(closeBtn);
+    header.appendChild(title);
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'inpage-sidebar-iframe';
+    iframe.src = `../managers/index.html?manager=${mode}`;
+
+    sidebar.appendChild(header);
+    sidebar.appendChild(iframe);
+    document.body.appendChild(sidebar);
+    requestAnimationFrame(() => {
+        sidebar.classList.add('open');
+    });
+}
+
+function normalizeFavicon(fav) {
+    if (!fav) return null;
+    if (isValidURL(fav)) return fav;
+    return null;
+}
+
+async function renderCardItems() {
+    const bookmarksCont = document.getElementById('all-bookmarks');
+    const historyCont = document.getElementById('all-history');
+
+    const profile = localStorage.getItem('currentProfile');
+    const bookmarks = getBookmarks(profile);
+    const history = await getHistoryProfile(profile, 10);
+
+    if (!bookmarks && !history) return;
+
+    bookmarksCont.innerHTML = '';
+    historyCont.innerHTML = '';
+
+    // -----------------------------
+    // HISTORY
+    // -----------------------------
     if (history.length) {
         history.forEach(item => {
             const hisElem = document.createElement('button');
             hisElem.classList.add('his-book-button');
-            hisElem.onclick = () => {
-                window.open(item.url)
-            }
+            hisElem.onclick = () => window.open(item.url);
 
-            // Image
-            const img = item.favicon
-                ? Object.assign(document.createElement('img'), { src: item.favicon })
+            const favicon = normalizeFavicon(item.favicon);
+
+            const img = favicon
+                ? Object.assign(document.createElement('img'), { src: favicon })
                 : Object.assign(document.createElement('i'), {
                     className: 'material-symbols-rounded',
                     textContent: 'history'
                 });
 
-            // Text container
             const span = document.createElement('span');
 
-            // Line 1
             const p1 = document.createElement('p');
             p1.textContent = item.title || item.url;
 
-            // Line 2
             const p2 = document.createElement('p');
             p2.textContent = item.title ? getBaseURL(item.url) : '';
 
-            // Build structure
             span.appendChild(p1);
             span.appendChild(p2);
 
@@ -138,50 +210,60 @@ async function renderCardItems() {
         });
     } else {
         historyCont.innerHTML = `
-            <div class="centered-message>
+            <div class="centered-message">
                 <div>
                     <h1><i class="material-symbols-rounded">history_off</i></h1>
-                    <p>There is no history left behind</p>
+                    <p>There is no History Left Behind</p>
                 </div>
-            </div>"`
+            </div>`;
     }
 
-    bookmarks.forEach(item => {
-        const hisElem = document.createElement('button');
-        hisElem.classList.add('his-book-button');
+    // -----------------------------
+    // BOOKMARKS
+    // -----------------------------
+    if (bookmarks.length) {
 
-        hisElem.onclick = () => {
-            window.open(item.url)
-        }
+        bookmarks.forEach(item => {
+            const hisElem = document.createElement('button');
+            hisElem.classList.add('his-book-button');
+            hisElem.onclick = () => window.open(item.url);
 
-        const img = item.favicon
-            ? Object.assign(document.createElement('img'), { src: item.favicon })
-            : Object.assign(document.createElement('i'), {
-                className: 'material-symbols-rounded',
-                textContent: 'bookmarks'
-            });
+            const favicon = normalizeFavicon(item.favicon);
 
-        // Text container
-        const span = document.createElement('span');
+            const img = favicon
+                ? Object.assign(document.createElement('img'), { src: favicon })
+                : Object.assign(document.createElement('i'), {
+                    className: 'material-symbols-rounded',
+                    textContent: 'bookmarks'
+                });
 
-        // Line 1
-        const p1 = document.createElement('p');
-        p1.textContent = item.title || item.url;
+            const span = document.createElement('span');
 
-        // Line 2
-        const p2 = document.createElement('p');
-        p2.textContent = item.title ? getBaseURL(item.url) : '';
+            const p1 = document.createElement('p');
+            p1.textContent = item.title || item.url;
 
-        // Build structure
-        span.appendChild(p1);
-        span.appendChild(p2);
+            const p2 = document.createElement('p');
+            p2.textContent = item.title ? getBaseURL(item.url) : '';
 
-        hisElem.appendChild(img);
-        hisElem.appendChild(span);
+            span.appendChild(p1);
+            span.appendChild(p2);
 
-        bookmarksCont.appendChild(hisElem);
-    });
+            hisElem.appendChild(img);
+            hisElem.appendChild(span);
+
+            bookmarksCont.appendChild(hisElem);
+        });
+    } else {
+        bookmarksCont.innerHTML = `
+            <div class="centered-message">
+                <div>
+                    <h1><i class="material-symbols-rounded">bookmark_remove</i></h1>
+                    <p>There is No Saved Bookmarks</p>
+                </div>
+            </div>`;
+    }
 }
+
 
 function getBaseURL(url) {
     try {
@@ -196,35 +278,56 @@ function getBaseURL(url) {
     }
 }
 
+const voiceBtnEl = document.getElementById('voice-btn');
+const sendBtnEl = document.getElementById('send');
 
-// const settingsBtn = document.getElementById('settings-btn')
+voiceBtnEl.addEventListener('click', async () => {
+    if (!isSpeechAvailable) {
+        console.warn('Speech recognition not available in this environment');
+        return;
+    }
 
-// settingsBtn.onclick = () => {
-//     if (window.electronAPI?.openSidebarApp) {
-//         window.electronAPI.send('sidebar:open-app', {
-//             app: 'settings'
-//         });
+    if (!recognition) {
+        recognition = createRecognition(({ interim, final, ended } = {}) => {
+            if (typeof interim === 'string' && interim.length) address.value = interim;
+            if (typeof final === 'string' && final.length) address.value = final;
+            if (ended) {
+                voiceBtnEl.classList.remove('listening');
+                voiceBtnEl.setAttribute('aria-pressed', 'false');
+                listening = false;
+            }
+        });
+        if (!recognition) return;
+    }
 
-//     } else {
-//         console.log("Sidebar not available — running fallback");
-//     }
-// }
+    try {
+        if (!listening) {
+            recognition.start();
+            listening = true;
+            voiceBtnEl.classList.add('listening');
+            voiceBtnEl.setAttribute('aria-pressed', 'true');
+        } else {
+            recognition.stop();
+        }
+    } catch (e) {
+        console.warn('Recognition start/stop error', e);
+    }
+});
 
-document.getElementById('send').onclick = () => {
-    const enterEvent = new KeyboardEvent("keydown", {
-        key: "Enter",
-        code: "Enter",
+sendBtnEl.addEventListener('click', () => {
+    const enterEvent = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
         keyCode: 13,
         which: 13,
         bubbles: true
     });
-
     address.dispatchEvent(enterEvent);
-}
+});
 
 function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('BrowserProfilesDB', 5);
+        const request = indexedDB.open('BrowserProfilesDB', 6);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
@@ -273,6 +376,16 @@ function transactionDone(tx) {
         tx.onerror = () => reject(tx.error || new Error('Transaction error'));
         tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
     });
+}
+
+async function loadAllSettings() {
+    const db = await openDB();
+    const tx = db.transaction('settings', 'readonly');
+    const store = tx.objectStore('settings');
+    const res = await promisifyRequest(store.getAll());
+    return res || [];
+
+    savedSettings = res;
 }
 
 const address = document.getElementById('search-suggestion');
@@ -325,16 +438,23 @@ async function getAllHistory(profile) {
     const tx = db.transaction('history', 'readonly');
     const store = tx.objectStore('history');
 
-    const res = await promisifyRequest(store.getAll());
-
-    // Filter by profile BEFORE sorting
-    const history = (res || [])
-        .filter(item => item.profile === profile)
-        .sort((a, b) => b.visitedAt - a.visitedAt)
-
-    await transactionDone(tx);
-
-    return history;
+    return new Promise((resolve, reject) => {
+        const results = [];
+        const req = store.openCursor();
+        req.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (!cursor) {
+                // sort descending by visitedAt
+                results.sort((a, b) => b.visitedAt - a.visitedAt);
+                resolve(results);
+                return;
+            }
+            const val = cursor.value;
+            if (val && val.profile === profile) results.push(val);
+            cursor.continue();
+        };
+        req.onerror = () => reject(req.error);
+    });
 }
 
 async function getHistoryProfile(profile, limit = 50) {
@@ -342,17 +462,29 @@ async function getHistoryProfile(profile, limit = 50) {
     const tx = db.transaction('history', 'readonly');
     const store = tx.objectStore('history');
 
-    const res = await promisifyRequest(store.getAll());
-
-    // Filter by profile BEFORE sorting
-    const history = (res || [])
-        .filter(item => item.profile === profile)
-        .sort((a, b) => b.visitedAt - a.visitedAt)
-        .slice(0, limit);
-
-    await transactionDone(tx);
-
-    return history;
+    return new Promise((resolve, reject) => {
+        const results = [];
+        const req = store.openCursor();
+        req.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (!cursor) {
+                results.sort((a, b) => b.visitedAt - a.visitedAt);
+                resolve(results.slice(0, limit));
+                return;
+            }
+            const val = cursor.value;
+            if (val && val.profile === profile) {
+                results.push(val);
+                // Keep memory bounded: if we accumulate too many, trim down
+                if (results.length > limit * 5) {
+                    results.sort((a, b) => b.visitedAt - a.visitedAt);
+                    results.length = Math.max(limit * 2, limit);
+                }
+            }
+            cursor.continue();
+        };
+        req.onerror = () => reject(req.error);
+    });
 }
 
 function openUrlOrSearch(urlOrSearch) {
@@ -628,7 +760,8 @@ async function buildSuggestions(queryRaw) {
         const title = (b.title || b.url).toString();
         if (title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower)) results.push({ text: b.url, label: title, type: 'bookmark', sub: b.url });
     }
-    const history = (typeof getHistoryProfile === 'function') ? await getHistoryProfile(50) : [];
+    const currentProfile = localStorage.getItem('currentProfile') || 'Default';
+    const history = (typeof getHistoryProfile === 'function') ? await getHistoryProfile(currentProfile, 50) : [];
     for (const h of (history || [])) {
         if (!h || !h.url) continue;
         const title = (h.title || h.url).toString();
@@ -716,11 +849,16 @@ function renderSuggestions(list) {
         row.addEventListener('mouseleave', () => row.style.background = 'transparent');
         box.appendChild(row);
     });
-    const rect = (typeof document.getElementById('s-i') !== 'undefined' && document.getElementById('s-i') && typeof document.getElementById('s-i').getBoundingClientRect === 'function') ? document.getElementById('s-i').getBoundingClientRect() : null;
+    const rect = (typeof document.getElementById('search-container') !== 'undefined' && document.getElementById('search-container') && typeof document.getElementById('search-container').getBoundingClientRect === 'function') ? document.getElementById('search-container').getBoundingClientRect() : null;
+
+    console.log(rect)
     if (rect) {
-        box.style.position = 'fixed';
-        box.style.top = `${rect.bottom}px`;
-        box.style.left = `${rect.left}px`;
+        const top = rect.top + rect.height + window.scrollY;
+        const left = rect.left + window.scrollX;
+
+        box.style.position = 'absolute';
+        box.style.top = `${top}px`;
+        box.style.left = `${left}px`;
         box.style.width = `${rect.width}px`;
         box.style.display = 'block';
         box.setAttribute('aria-hidden', 'false');
@@ -946,7 +1084,7 @@ function showPopupSearchable(array, title, mode, info = {}) {
         padding: "20px",
         boxSizing: "border-box"
     });
-    backdrop.addEventListener("click", e => { if (e.target === backdrop) backdrop.remove(); });
+    backdrop.addEventListener("click", e => { if (e.target === backdrop) { i.src = 'about:blank'; backdrop.remove(); } });
 
     const popup = document.createElement("div");
     popup.classList.add("popup-centered-like-browser");
@@ -965,12 +1103,11 @@ function showPopupSearchable(array, title, mode, info = {}) {
     i.src = `../managers/index.html?manager=${mode}`;
     i.style.width = '100%';
     i.style.height = '100%';
-    document.body.appendChild(i);
 
 
     const closeBtn = document.createElement("button");
     closeBtn.innerHTML = `<i class="material-symbols-rounded">close</i>`;
-    closeBtn.onclick = () => backdrop.remove();
+    closeBtn.onclick = () => { i.src = 'about:blank'; backdrop.remove(); };
 
     // header.appendChild(titleEl);
     popup.appendChild(closeBtn);
@@ -1186,7 +1323,7 @@ function processQueue() {
 
     // Animate in
     notification.style.transition = 'transform 0.3s';
-    notification.style.transform = 'translate(-50%, -10px)';
+    notification.style.transform = 'translate(-50%, -24px)';
 
     isDisplaying = true;
 
@@ -1202,3 +1339,103 @@ function processQueue() {
         }, 300);
     }, timeout);
 }
+
+
+// === Bluebird Futuristic Enhancements ===
+document.addEventListener('DOMContentLoaded', () => {
+    // Greeting + time
+    const greetingEl = document.getElementById('greeting-text');
+    const timeEl = document.getElementById('time-text');
+    function updateTime() {
+        const now = new Date();
+        const h = now.getHours();
+        let greet = 'Good evening';
+        if (h < 12) greet = 'Good morning';
+        else if (h < 17) greet = 'Good afternoon';
+        if (greetingEl) greetingEl.textContent = greet;
+        if (timeEl) timeEl.textContent = now.toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    updateTime();
+    setInterval(updateTime, 30000);
+
+    // Auto-resize textarea
+    const ta = document.getElementById('search-suggestion');
+    if (ta) {
+        const resize = () => { ta.style.height = '28px'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; };
+        ta.addEventListener('input', resize);
+        resize();
+    }
+
+    // Quick actions
+    document.querySelectorAll('.quick-actions button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            if (action === 'ai') {
+                if (ta) { ta.value = '!ai '; ta.focus(); ta.dispatchEvent(new Event('input')); }
+            } else if (action === 'history') {
+                document.getElementById('see-all-history')?.click();
+            } else if (action === 'bookmarks') {
+                document.getElementById('see-all-bookmarks')?.click();
+            } else if (action === 'apps') {
+                displayNotification('Apps panel coming soon', 'apps', 2000);
+            }
+        });
+    });
+
+    // Command palette
+    const palette = document.getElementById('command-palette');
+    const cmdInput = document.getElementById('cmd-input');
+    const openPalette = () => { if (palette) { palette.hidden = false; setTimeout(() => cmdInput?.focus(), 0); } };
+    const closePalette = () => { if (palette) palette.hidden = true; };
+
+    document.getElementById('command-btn')?.addEventListener('click', openPalette);
+    document.querySelector('.cmd-backdrop')?.addEventListener('click', closePalette);
+    window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
+        if (e.key === 'Escape') closePalette();
+    });
+    document.querySelectorAll('.cmd-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const cmd = item.dataset.cmd;
+            closePalette();
+            if (cmd === 'newtab') displayNotification('New tab', 'add', 1500);
+            if (cmd === 'ai' && ta) { ta.value = '!ai '; ta.focus(); }
+            if (cmd === 'history') document.getElementById('see-all-history')?.click();
+            if (cmd === 'bookmarks') document.getElementById('see-all-bookmarks')?.click();
+        });
+    });
+
+    // Tab interactions (visual only)
+    document.querySelector('.tab-new')?.addEventListener('click', () => {
+        displayNotification('New tab created', 'tab', 1500);
+    });
+
+    // Improve suggestions positioning for new layout
+    const suggestionsBox = document.getElementById('suggestions');
+    const searchContainer = document.getElementById('search-container');
+    if (suggestionsBox && searchContainer) {
+        const observer = new MutationObserver(() => {
+            if (suggestionsBox.style.display !== 'none') {
+                suggestionsBox.style.position = 'absolute';
+            }
+        });
+        observer.observe(suggestionsBox, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    // Focus search on load
+    setTimeout(() => ta?.focus(), 300);
+
+    renderCardItems();
+});
+
+// Enhance notification animation for new design
+const originalDisplayNotification = window.displayNotification;
+window.displayNotification = function (message, icon = '', timeout = 3000, priority = 1) {
+    if (typeof originalDisplayNotification === 'function') {
+        originalDisplayNotification(message, icon, timeout, priority);
+        const n = document.getElementById('notification');
+        if (n) {
+            n.style.transform = 'translate(-50%, -24px)';
+        }
+    }
+};

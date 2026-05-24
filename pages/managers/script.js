@@ -109,30 +109,131 @@ function loadIndexedDB(storeName) {
 }
 
 async function loadItems(storeName) {
-    const request = indexedDB.open("BrowserProfilesDB");
+    // stream-render with pagination to avoid allocating huge arrays
+    async function streamRender(limit = 200, startKey = null) {
+        const request = indexedDB.open("BrowserProfilesDB");
 
-    request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction(storeName, "readonly");
-        const store = tx.objectStore(storeName);
+        request.onsuccess = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(storeName)) return;
 
-        const items = [];
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
 
-        store.openCursor().onsuccess = (e) => {
-            const cursor = e.target.result;
-            if (!cursor) {
-                renderList(items);
-                return;
-            }
+            // clear container for fresh render
+            container.innerHTML = '';
 
-            items.push({
-                ...cursor.value,
-                id: cursor.key
-            });
+            let count = 0;
+            let lastKey = null;
 
-            cursor.continue();
+            const direction = 'prev'; // newest first
+            const range = startKey ? IDBKeyRange.lowerBound(startKey, true) : null;
+            const req = store.openCursor(range, direction);
+
+            req.onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (!cursor || count >= limit) {
+                    // attach Load more if more items exist
+                    if (cursor) lastKey = cursor.key;
+                    if (cursor) {
+                        const moreBtn = document.createElement('button');
+                        moreBtn.textContent = 'Load more';
+                        moreBtn.style.margin = '12px';
+                        moreBtn.onclick = () => streamRender(limit, lastKey);
+                        container.appendChild(moreBtn);
+                    }
+                    return;
+                }
+
+                const item = Object.assign({}, cursor.value, { id: cursor.key });
+                const el = createManagerItem(item);
+                container.appendChild(el);
+                count++;
+                lastKey = cursor.key;
+                cursor.continue();
+            };
         };
+    }
+
+    // start stream render with a reasonable default
+    await streamRender(200);
+}
+
+// create a DOM element for a manager item (used for incremental rendering)
+function createManagerItem(item) {
+    const div = document.createElement("div");
+    div.className = "manager-item";
+
+    const wrapper1 = document.createElement("span");
+    wrapper1.className = "wrapper-1";
+
+    const favCont = document.createElement("span");
+    favCont.className = "favicon";
+
+    let favElem;
+    if (item.favicon && item.favicon.startsWith("http")) {
+        favElem = document.createElement("img");
+        favElem.loading = 'lazy';
+        favElem.src = item.favicon;
+    } else {
+        favElem = document.createElement("i");
+        favElem.classList.add("material-symbols-rounded");
+        favElem.textContent = "globe";
+    }
+    favCont.appendChild(favElem);
+
+    const wrapper2 = document.createElement("span");
+    wrapper2.className = "wrapper";
+
+    const info = document.createElement("div");
+    info.className = "info";
+
+    const titleEl = document.createElement("h4");
+    titleEl.textContent = item.title || getBaseURL(item.url) || "Untitled";
+
+    const subtitleEl = document.createElement("p");
+    subtitleEl.textContent = getBaseURL(item.url) || item.lastVisited || "";
+
+    info.appendChild(titleEl);
+    info.appendChild(subtitleEl);
+
+    const ts = getItemTimestamp(item);
+    if (ts) {
+        const small = document.createElement("small");
+        small.textContent = new Date(ts).toLocaleString();
+        info.appendChild(small);
+    }
+
+    wrapper2.appendChild(info);
+    wrapper1.appendChild(favCont);
+    wrapper1.appendChild(wrapper2);
+
+    const wrapper3 = document.createElement("span");
+    wrapper3.style.gap = "40px";
+
+    const openBtn = document.createElement("a");
+    openBtn.className = "open-btn material-symbols-rounded";
+    openBtn.innerHTML = "open_in_new";
+    openBtn.href = item.url;
+    openBtn.target = "_blank";
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "delete-btn material-symbols-rounded";
+    delBtn.textContent = "delete";
+
+    delBtn.onclick = () => {
+        if (managerType === "bookmarks") deleteBookmark(item.createdAt);
+        if (managerType === "tabs") deleteIndexedDBItem("tabs", item.id);
+        if (managerType === "history") deleteIndexedDBItem("history", item.id);
     };
+
+    wrapper3.appendChild(delBtn);
+    wrapper3.appendChild(openBtn);
+
+    div.appendChild(wrapper1);
+    div.appendChild(wrapper3);
+
+    return div;
 }
 
 
@@ -178,6 +279,69 @@ function deleteBookmark(id) {
 }
 
 window.deleteBookmark = deleteBookmark;
+
+// ------------------------------
+// Edit bookmark
+// ------------------------------
+function editBookmark(id) {
+    const raw = localStorage.getItem(`bookmarks:${localStorage.getItem('currentProfile')}`);
+    if (!raw) return displayNotification('Bookmark not found', 'error');
+
+    let arr;
+    try { arr = JSON.parse(raw); } catch { return displayNotification('Invalid bookmark data', 'error'); }
+
+    const idx = arr.findIndex(b => String(b.createdAt) === String(id));
+    if (idx === -1) return displayNotification('Bookmark not found', 'error');
+
+    const bm = Object.assign({}, arr[idx]);
+
+    let overlay = document.getElementById('edit-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'edit-overlay';
+        Object.assign(overlay.style, { position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999' });
+        overlay.innerHTML = `
+            <div class="popup-on-ov" id="edit-popup">
+                <h3 style="margin-top:0;margin-bottom:8px;">Edit Bookmark</h3>
+                <label style="display:block;font-size:13px;margin-bottom:4px;">Title</label>
+                <input id="edit-title" style="width:100%;margin-bottom:8px;">
+                <label style="display:block;font-size:13px;margin-bottom:4px;">URL</label>
+                <input id="edit-url" style="width:100%;margin-bottom:8px;">
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+                    <button id="edit-cancel">Cancel</button>
+                    <button id="edit-save">Save</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#edit-cancel').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    }
+
+    overlay.querySelector('#edit-title').value = bm.title || '';
+    overlay.querySelector('#edit-url').value = bm.url || '';
+
+    overlay.querySelector('#edit-save').onclick = () => {
+        const newTitle = overlay.querySelector('#edit-title').value.trim();
+        const newUrl = overlay.querySelector('#edit-url').value.trim();
+        if (!newUrl) return displayNotification('URL required', 'error');
+
+        arr[idx].title = newTitle;
+        arr[idx].url = newUrl;
+
+        try {
+            localStorage.setItem(`bookmarks:${localStorage.getItem('currentProfile')}`, JSON.stringify(arr));
+            overlay.remove();
+            loadManager();
+            displayNotification('Bookmark updated', 'check_circle');
+        } catch {
+            displayNotification('Failed to save bookmark', 'error');
+        }
+    };
+}
+
+window.editBookmark = editBookmark;
 
 function deleteIndexedDBItem(storeName, id) {
     const request = indexedDB.open("BrowserProfilesDB");
@@ -375,6 +539,7 @@ function renderBookmarksTree(bookmarks) {
                     </span>
                 </span>
                 <span style="gap: 40px;">
+                    <button class="edit-btn material-symbols-rounded" onclick="editBookmark(${bm.createdAt})">edit</button>
                     <button class="delete-btn material-symbols-rounded" onclick="deleteBookmark(${bm.createdAt})">delete</button>
                     <a class="open-btn material-symbols-rounded" href="${bm.url}" target="_blank">open_in_new</a>
                 </span>

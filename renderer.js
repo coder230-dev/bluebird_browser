@@ -2,6 +2,32 @@
 // 2026 Bryant Sandoval
 // DISCLAIMER: This app or project was mostly made with AI, combined with features that were checked and created by me
 
+if (!navigator.userAgent.includes("BluebirdBrowser")) {
+	let a = document.createElement('a');
+	a.href = "pages/new-tab/index.html"
+	document.body.appendChild(a);
+	a.click();
+}
+
+const PERMISSION_MAP = {
+	media: { label: 'Camera & Microphone', icon: '🎥', desc: 'Allows video calls and audio recording.' },
+	camera: { label: 'Camera', icon: '📷', desc: 'Allows taking photos or video.' },
+	microphone: { label: 'Microphone', icon: '🎤', desc: 'Allows recording audio.' },
+	audioCapture: { label: 'Audio Capture', icon: '🎙️', desc: 'Allows microphone access in browser contexts.' },
+	midi: { label: 'MIDI', icon: '🎹', desc: 'Allows MIDI device access for music apps.' },
+	midiSysex: { label: 'MIDI SysEx', icon: '🧬', desc: 'Allows MIDI System Exclusive device access.' },
+	displayCapture: { label: 'Screen Capture', icon: '🖥️', desc: 'Allows screen, window, or tab sharing.' },
+	'clipboard-read': { label: 'Clipboard Read', icon: '📋', desc: 'Allows reading text from the system clipboard.' },
+	'clipboard-write': { label: 'Clipboard Write', icon: '✍️', desc: 'Allows writing text to the system clipboard.' },
+	protectedMediaIdentifier: { label: 'Protected Media', icon: '🔒', desc: 'Allows playback of protected DRM media.' },
+	fullscreen: { label: 'Fullscreen', icon: '⛶', desc: 'Allows switching the page into fullscreen mode.' },
+	geolocation: { label: 'Location', icon: '📍', desc: 'Allows access to your precise location.' },
+	notifications: { label: 'Notifications', icon: '🔔', desc: 'Allows showing alerts.' },
+	pointerLock: { label: 'Pointer Lock', icon: '🎯', desc: 'Allows locking the mouse pointer to the page.' },
+	openExternal: { label: 'Open External', icon: '🔗', desc: 'Allows opening external links in a separate app or window.' },
+	'persistent-storage': { label: 'Persistent Storage', icon: '💾', desc: 'Allows the site to store data that persists across sessions.' }
+};
+
 // Cache
 const MAX_RECENT_CACHE = 50;
 window.cachedHistoryRecent = [];
@@ -42,56 +68,6 @@ const updateContent = `
 		<a href="" click="createTab('https://github.com/coder230-dev/bluebird_browser')">https://github.com/coder230-dev/bluebird_browser (GitHub Project)</a>
 	</div>
 `
-
-{/* <div class="update-app-content">
-	<h2>What's New In Update 2.3.0?</h2>
-	<p>You have been updated to the new version of Bluebird Browser! Here's what it includes:</p>
-	<div class="flex">
-		<span class="updateContent">
-			<i class="material-symbols-rounded update-cont-logo">tab_recent</i>
-			<h3>New Tab Viewer</h3>
-			<p>Instead of using a context-menu like tab viewer, we have made some improvements to tab viewer. Now, you can close the page with one click, view more actions and active tab from that menu, and a more cleaner UI.</p>
-			<p>To access, click this button (<i class="material-symbols-rounded">tabs</i>) on the top right.</p>
-		</span>
-		<span class="updateContent">
-			<i class="material-symbols-rounded update-cont-logo">battery_android_frame_plus</i>
-			<h3>Battery Manager</h3>
-			<p>You can now view battery percentage from the titlebar, if you have the button enabled. If you click on it, you will get more, in depth details about your battery. Keep in mind that we calcuate things differently.</p>
-		</span>
-		<span class="updateContent">
-			<i class="material-symbols-rounded update-cont-logo">robot_2</i>
-			<h3>AI Chatbox</h3>
-			<p>We are bringing AI to our browser. Using Copilot, Gemini, Google Search, and ChatGPT, you can use AI to talk to in the sidebar. Have a question? Need clarification? It just a click away.</p>
-		</span>
-	</div>
-	<div>
-		<h3 style="text-align: left;">More Updates</h3>
-		<ul>
-			<li>
-				<b>New Popups</b>
-				<p>To make your life simple, we now have a new type of popups (like these). These popups are always centered, always big, and easy to use.</p>
-			</li>
-			<li>
-				<b>Bookmarks Bar</b>
-				<p>Classic, browser feature. Now in Bluebird Browser.</p>
-			</li>
-			<li>
-				<b>3rd Party Account Connections</b>
-				<p>Due to the ability that restricts logging in thru the browser, you can now log in safely thru a new window, and you will now be logged in to the browser.</p>
-				<p><b>How to Log In?</b> Under Profile menu, go to Connected Accounts, then select one of the options. Currently, Google, Microsoft, GitHub, and Apple are ready to use.</p>
-			</li>
-			<li>
-				<b>And More</b>
-				<p>Look throughout the browser to see new features!</p>
-			</li>
-			<li>
-				<b>Access your Active Hidden Tab</b>
-				<p>To easily access you active tab (while hidden), it will now show a button to the left of the screen. Clicking on it shows the actions that shows for that tab.</p>
-			</li>
-			<p>We hope you enjoy these features! Till the next time.</p>
-		</ul>
-	</div>
-</div> */}
 
 window.api.getAppVersion().then(version => {
 	appVersion = version
@@ -441,7 +417,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 		if (startupMode === 'Restore Tabs' && savedTabs.length > 0) {
 			for (const t of savedTabs) {
 				createTab(t.url);
-				updateOverflow()
 			}
 		} else if (startupMode === 'Open A Set List of Tabs') {
 			if (setTabsList.length > 0) {
@@ -540,11 +515,6 @@ function debounce(fn, delay = 150) {
 		timeout = setTimeout(() => fn(...args), delay);
 	};
 }
-
-window.onresize = debounce(() => {
-	updateOverflow();
-	showTabLeftInfo(getActive());
-}, 150);
 
 const profileInfoEl = document.getElementById('profile-info');
 if (profileInfoEl) {
@@ -974,7 +944,7 @@ async function setSitePermission(siteUrl, permission, decision) {
 	await savePermission(siteUrl, permission, decision);
 	const active = getActive();
 	if (active?.webview && getBaseURL(active.url) === getBaseURL(siteUrl)) {
-		applySitePermissionsToWebview(active.webview, active.url).catch(() => {});
+		applySitePermissionsToWebview(active.webview, active.url).catch(() => { });
 	}
 }
 
@@ -1454,9 +1424,6 @@ document.addEventListener('mousemove', (e) => {
 document.addEventListener('mouseup', (e) => {
 	if (!dragState.isDragging) return;
 	dragState.isDragging = false;
-	setTimeout(function () {
-		updateOverflow();
-	}, 100)
 
 	if (!dragState.draggedEl) {
 		dragState.draggedEl = null;
@@ -1949,45 +1916,42 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 
 window.permissionsAPI.onRequest(async ({ requestId, origin, permission }) => {
 	const existing = await window.permissionsAPI.getDecision(origin, permission);
-	if (existing === 'allow') {
-		window.permissionsAPI.respond(requestId, origin, permission, true);
-		return;
-	} else if (existing === 'deny') {
-		window.permissionsAPI.respond(requestId, origin, permission, false);
-		return;
-	}
+	if (existing) return window.permissionsAPI.respond(requestId, origin, permission, existing === 'allow');
+
+	const meta = PERMISSION_MAP[permission] || { label: permission, icon: '🔒', desc: '' };
 
 	const content = `
-		<h4>Requesting Permission</h4>
-		<p>${getBaseURL(origin)} is asking for ${permission} permission.</p>
-		<div class="flex" style="gap: 10px;">
-			<button id="denyPerm">Deny</button>
-			<button id="allowOnce">Allow Once</button>
-			<button id="allowAlways">Allow Always</button>
-			<button id="never">Never</button>
-		</div>
-		`;
-	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'), undefined, undefined);
-	popup.classList.add('permission-prompt');
-	document.getElementById('denyPerm').onclick = async () => {
+	  <div class="origin">${getBaseURL(origin)}</div>
+	  <p style="color:#94a3b8;margin:4px 0 0">is requesting permission to use:</p>
+	  <div class="perm-title"><span>${meta.icon}</span> ${meta.label}</div>
+	  <p class="desc">${meta.desc} You can change this anytime in site settings.</p>
+	  <div class="actions">
+		<button id="block">Block</button>
+		<button id="allowOnce">Allow once</button>
+		<button id="allowAlways">Allow always</button>
+	  </div>`;
+
+	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'));
+	popup.popup.classList.add('permission-prompt');
+	popup.popup.setAttribute('role', 'dialog');
+	popup.popup.setAttribute('aria-label', 'Permission request');
+
+	const close = (allowed) => {
+		window.permissionsAPI.respond(requestId, origin, permission, allowed);
+		popup.popup.remove();
+	};
+
+	popup.popup.querySelector('#block').onclick = async () => {
 		await window.permissionsAPI.saveDecision(origin, permission, 'deny');
-		window.permissionsAPI.respond(requestId, origin, permission, false);
-		popup.remove();
+		close(false);
 	};
-	document.getElementById('allowOnce').onclick = () => {
-		window.permissionsAPI.respond(requestId, origin, permission, true);
-		popup.remove();
-	};
-	document.getElementById('allowAlways').onclick = async () => {
+	popup.popup.querySelector('#allowOnce').onclick = () => close(true);
+	popup.popup.querySelector('#allowAlways').onclick = async () => {
 		await window.permissionsAPI.saveDecision(origin, permission, 'allow');
-		window.permissionsAPI.respond(requestId, origin, permission, true);
-		popup.remove();
+		close(true);
 	};
-	document.getElementById('never').onclick = async () => {
-		await window.permissionsAPI.saveDecision(origin, permission, 'deny');
-		window.permissionsAPI.respond(requestId, origin, permission, false);
-		popup.remove();
-	};
+
+	popup.popup.querySelector('.close')?.addEventListener('click', () => close(false));
 });
 
 function getAllTabs() { return tabs; }
@@ -2048,10 +2012,10 @@ function addBookmark(profile = activeProfile, bm, edit = true) {
 	} else {
 		// optional non-edit popup for silent save
 		const pop = createPopup('Bookmark saved', bookmarkBtn);
-		const btn = pop.querySelector('button');
+		const btn = pop.popup.querySelector('button');
 		if (btn) {
 			btn.addEventListener('click', function () {
-				pop.remove();
+				pop.removePop();
 			});
 		}
 	}
@@ -2147,7 +2111,7 @@ function generateUniqueShortId(prefix = 'tab', length = 8) {
 
 async function addTabElement(tab, index = undefined, playAnimation = false) {
 	if (!tabsBar) return;
-	const el = document.createElement('button');
+	const el = document.createElement('div');
 	el.className = 'tab';
 	el.dataset.id = tab.id;
 	el.dataset.shortId = tab.shortId;
@@ -2226,6 +2190,11 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 		closeTab(tab.id);
 	};
 	el.appendChild(closeBtn);
+
+	// progress bar
+	let prog = document.createElement('div');
+	prog.classList.add('progress-bar');
+	document.body.appendChild(prog);
 
 	// click to activate
 	el.onclick = () => { setActiveTab(tab.id); };
@@ -2403,14 +2372,15 @@ async function updateTabElement(tab) {
 	const audIcon = el.querySelector('.audio-icon-tab')
 	if (tab.audio) {
 		audIcon.style.display = 'unset';
+		audIcon.classList.add('aud-play');
 	} else {
 		audIcon.style.display = 'none';
+		audIcon.classList.remove('aud-play');
 	}
 
 	el.dataset.favicon = tab.favicon
 
 	updateTabOnStorage(tab);
-	updateOverflow();
 
 	// if (document.getElementById('active-overflow-tag')) {
 	// 	document.getElementById('active-overflow-tag').remove()
@@ -2461,7 +2431,7 @@ function showTabLeftInfo(info) {
 					{ icType: 'GF', icon: "arrow_right", name: 'Select Next Tab', category: 'Select Tab', function: () => { runContextAction('nextTab') } },
 
 					{ icType: 'GF', icon: "arrow_upward", name: 'Move Tab to Start', category: 'Move Tab', function: () => { moveTabToStart(info.tabElement) } },
-					{ icType: 'GF', icon: "arrow_downward", name: 'Move Tab to End', category: 'Move Tab', function: () => { closeTab(info.tabElement) } },
+					{ icType: 'GF', icon: "arrow_downward", name: 'Move Tab to End', category: 'Move Tab', function: () => { moveTabToEnd(info.tabElement) } },
 
 					{ icType: 'GF', icon: "close", name: 'Close Tab', category: 'Close Tab', function: () => { closeTab(info.id) } },
 					{ icType: 'GF', icon: "filter_none", name: 'Close Other Tabs', category: 'Close Tab', function: () => { closeOtherTabs(info.id) } },
@@ -2506,9 +2476,9 @@ function createTab(url, opts = {}) {
 	const wv = document.createElement('webview');
 	wv.src = url;
 	wv.id = shortId;
-	applySitePermissionsToWebview(wv, url).catch(() => {});
-	wv.addEventListener('did-navigate', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => {}));
-	wv.addEventListener('did-navigate-in-page', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => {}));
+	applySitePermissionsToWebview(wv, url).catch(() => { });
+	wv.addEventListener('did-navigate', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => { }));
+	wv.addEventListener('did-navigate-in-page', () => applySitePermissionsToWebview(wv, wv.getURL()).catch(() => { }));
 
 	const isPrivateTab = Boolean(opts.private);
 	const isInternal = url.startsWith('file://');
@@ -2650,6 +2620,7 @@ function createTab(url, opts = {}) {
 
 	// DID START LOADING
 	const startLoadingHandler = () => {
+		views.style.background = 'none';
 		if (tab.spinner) tab.spinner.style.display = 'inline-block';
 	};
 	wv.addEventListener('did-start-loading', startLoadingHandler);
@@ -2661,6 +2632,8 @@ function createTab(url, opts = {}) {
 		if (active) showTabLeftInfo(active);
 
 		if (tab.spinner) tab.spinner.style.display = 'none';
+
+		views.style.background = 'rgb(250, 250, 250)';
 
 		const entry = {
 			url: wv.getURL(),
@@ -2900,34 +2873,48 @@ function getTabInfo(identifier) {
 }
 
 async function closeTab(tabId) {
-	const tabData = tabs.find(t => t.id === tabId);
-	if (!tabData) return;
-
-	const shortId = tabData.shortId;
-	const webview = tabData.webview;
-	const tabEl = tabData.tabElement;
-
-	// Determine new active tab BEFORE removal
-	const closingIndex = tabs.findIndex(t => t.id === tabId);
-	let newActiveTabId = null;
-
-	if (closingIndex > 0) {
-		newActiveTabId = tabs[closingIndex - 1].id;
-	} else if (closingIndex === 0 && tabs.length > 1) {
-		newActiveTabId = tabs[1].id;
+	// Normalize tabId
+	if (tabId && typeof tabId !== "string") {
+		tabId = tabId.dataset?.id;
 	}
+
+	const closingIndex = tabs.findIndex(t => t.id === tabId);
+	if (closingIndex === -1) return;
+
+	const tabData = tabs[closingIndex];
+	const { shortId, webview, tabElement: tabEl, listeners } = tabData;
+
+	// Pre-calc new active tab
+	let newActiveTabId =
+		closingIndex > 0
+			? tabs[closingIndex - 1].id
+			: tabs.length > 1
+				? tabs[1].id
+				: null;
 
 	// --- PLAY CLOSING ANIMATION ---
 	if (tabEl) {
 		tabEl.classList.add("close-animation");
 
-		// Wait for transition end (Chrome-style width collapse)
 		await new Promise(resolve => {
-			const done = () => {
-				tabEl.removeEventListener("transitionend", done);
+			let done = false;
+
+			const finish = () => {
 				resolve();
+				if (done) return;
+				done = true;
+
+				if (newActiveTabId) {
+					setActiveTab(newActiveTabId);
+				} else {
+					activeTab = null;
+					updateAddressBar("");
+					updateNavButtons(null);
+				}
 			};
-			tabEl.addEventListener("transitionend", done);
+
+			tabEl.addEventListener("transitionend", finish, { once: true });
+			setTimeout(finish, 250);
 		});
 	}
 
@@ -2942,36 +2929,25 @@ async function closeTab(tabId) {
 	}
 
 	// --- REMOVE LISTENERS ---
-	if (tabData.listeners) {
-		tabData.listeners.forEach(({ event, handler }) => {
+	if (listeners) {
+		for (const { event, handler } of listeners) {
 			try { webview.removeEventListener(event, handler); } catch { }
-		});
-		delete tabData.listeners;
+		}
 	}
 
-	if (tabHistory[shortId]?._listeners) {
-		tabHistory[shortId]._listeners.forEach(({ event, fn }) => {
+	const hist = tabHistory[shortId];
+	if (hist?._listeners) {
+		for (const { event, fn } of hist._listeners) {
 			try { webview.removeEventListener(event, fn); } catch { }
-		});
+		}
 	}
 
 	// --- CLEAN REFERENCES ---
 	delete tabHistory[shortId];
-	tabs = tabs.filter(t => t.id !== tabId);
-
-	// Remove tab element AFTER animation
+	tabs.splice(closingIndex, 1); // faster than filter
 	tabEl?.remove();
 
-	// --- ACTIVATE NEW TAB ---
-	if (newActiveTabId) {
-		setActiveTab(newActiveTabId);
-	} else {
-		activeTab = null;
-		updateAddressBar("");
-		updateNavButtons(null);
-	}
-
-	if (tabs.length <= 0) {
+	if (tabs.length === 0) {
 		window.close();
 	}
 }
@@ -3139,277 +3115,6 @@ if (newWindowBtn) {
 	}
 })();
 
-// Tab Overflow (780)
-
-const tabsContainer = document.getElementById("tabs");
-const overflowBtn = document.getElementById("top-right-btn");
-
-function updateOverflow() {
-	const tabs = [...tabsContainer.querySelectorAll(".tab")];
-	const containerWidth = tabsContainer.getBoundingClientRect().width;
-	const newTabWidth = document.getElementById("new-tab").getBoundingClientRect().width;
-	const overflowBtnWidth = overflowBtn.getBoundingClientRect().width;
-
-	let usedWidth = newTabWidth + overflowBtnWidth + 50;
-	if (document.getElementById('active-overflow-tag')) {
-		usedWidth += document.getElementById('active-overflow-tag').getBoundingClientRect().width
-	}
-	let hiddenTabs = [];
-	let visibleTabs = [];
-
-	tabs.forEach(tab => {
-		const w = tab.getBoundingClientRect().width;
-
-		if (usedWidth + w + 6 > containerWidth - 20) {
-			tab.dataset.visible = 'hidden';
-			hiddenTabs.push(tab);
-			tab.style.position = 'absolute';
-
-			tab.style.zIndex = "-1";
-			tab.style.opacity = "0";
-		} else {
-			tab.style.position = "relative";
-			tab.style.zIndex = "0";
-			tab.style.opacity = "1";
-			tab.dataset.visible = 'visible';
-			visibleTabs.push(tab);
-			usedWidth += w;
-		}
-	});
-
-	overflowBtn.hiddenTabs = hiddenTabs;
-	overflowBtn.visibleTabs = visibleTabs;
-}
-
-// window.addEventListener("resize", updateOverflow);
-
-new MutationObserver(updateOverflow).observe(tabsContainer, {
-	childList: true,
-	subtree: true
-});
-
-updateOverflow();
-
-overflowBtn.addEventListener("click", (e) => {
-	e.stopPropagation();
-
-	const existing = document.getElementById("tab-pop-man");
-	if (existing) existing.remove();
-
-	const pop = createPopup("", overflowBtn);
-	pop.id = "tab-pop-man";
-
-	let alive = true;
-
-	const onDocClick = (ev) => {
-		if (pop.contains(ev.target)) return;
-		if (overflowBtn.contains(ev.target)) return;
-		alive = false;
-		pop.remove();
-		document.removeEventListener("click", onDocClick);
-	};
-
-	requestAnimationFrame(() => {
-		document.addEventListener("click", onDocClick);
-	});
-
-	const hidden = overflowBtn.hiddenTabs || [];
-	const visible = overflowBtn.visibleTabs || [];
-
-	const openTabMoreMenu = (tab, target) => {
-		const webview = document.getElementById(tab.dataset.shortId);
-		const isMuted = !!webview?.isAudioMuted?.();
-
-		const ctM = [
-			{
-				name: "Show Preview",
-				icon: "visibility",
-				icType: "GF",
-				category: 'Preview',
-				function: () => {
-					showTabInfo(
-						tab.dataset.title,
-						tab.dataset.url,
-						tab.dataset.favicon,
-						tab,
-						tab.dataset.shortId
-					);
-
-					document.addEventListener("mousemove", removeEventListenerA);
-					function removeEventListenerA() {
-						setTimeout(() => {
-							hideTabInfo();
-							document.removeEventListener("mousemove", removeEventListenerA);
-						}, 2000);
-					}
-				}
-			},
-			{
-				name: "Close Others",
-				icon: "filter_none",
-				icType: "GF",
-				category: 'Close',
-				function: () => closeOtherTabs(tab.dataset.id)
-			},
-			{
-				name: "Close Tabs to the Right",
-				icon: "subdirectory_arrow_right",
-				icType: "GF",
-				category: 'Close',
-				function: () => closeTabsToRight(tab.dataset.id)
-			},
-			{
-				name: "Move to Start",
-				icon: "arrow_upward",
-				icType: "GF",
-				category: 'Move Tab',
-				function: () => moveTabToStart(tab)
-			},
-			{
-				name: "Move to End",
-				icon: "arrow_downward",
-				icType: "GF",
-				category: 'Move Tab',
-				function: () => moveTabToEnd(tab)
-			},
-			{
-				name: tab.classList.contains("pinned") ? "Unpin Tab" : "Pin Tab",
-				icon: "keep",
-				icType: "GF",
-				category: 'Pin Tab',
-				function: () => togglePin(tab)
-			},
-			{
-				name: "Duplicate",
-				icon: "content_copy",
-				icType: "GF",
-				category: 'Manage',
-				function: () => duplicateTabO(tab.dataset.id)
-			},
-			{
-				name: isMuted ? "Unmute" : "Mute",
-				icon: isMuted ? "volume_up" : "volume_off",
-				icType: "GF",
-				category: 'Manage',
-				function: () => toggleMute(webview)
-			}
-		];
-
-		createContextMenu(ctM, target);
-	};
-
-	if (visible.length) {
-		pop.innerHTML += `<h4>Visible Tabs</h4>`;
-		visible.forEach(tab => {
-			const isAudio = tab.dataset.audio === "true";
-			const isMuted = tab.dataset.muted === "true";
-
-			pop.innerHTML += `
-                <div class="tab-on-overflow-menu ${getActive()?.id == tab.dataset.id ? "active" : ""}">
-                    <span class="icon-wrap">
-                        ${isAudio
-					? `<i class="material-symbols-rounded">${isMuted ? "volume_off" : "volume_up"}</i>`
-					: `<img src="${tab.dataset.favicon}">`
-				}
-                        <p>${tab.dataset.title}</p>
-                    </span>
-                    <span>
-                        <button class="material-symbols-rounded more-btn">more_vert</button>
-                        <button class="material-symbols-rounded close-btn" style="background: rgba(255,2,2,0.2)">close</button>
-                    </span>
-                </div>
-            `;
-		});
-	}
-
-	if (hidden.length) {
-		pop.innerHTML += `<h4>Hidden Tabs</h4>`;
-		hidden.forEach(tab => {
-			const isAudio = tab.dataset.audio === "true";
-			const isMuted = tab.dataset.muted === "true";
-
-			pop.innerHTML += `
-                <div class="tab-on-overflow-menu hidden-tab ${getActive()?.id == tab.dataset.id ? "active" : ""}">
-                    <span class="icon-wrap">
-                        ${isAudio
-					? `<i class="material-symbols-rounded">${isMuted ? "volume_off" : "volume_up"}</i>`
-					: `<img src="${tab.dataset.favicon}">`
-				}
-                        <p>${tab.dataset.title}</p>
-                    </span>
-                    <span>
-                        <button class="material-symbols-rounded more-btn">more_vert</button>
-                        <button class="material-symbols-rounded close-btn" style="background: rgba(255,2,2,0.2)">close</button>
-                    </span>
-                </div>
-            `;
-		});
-	}
-
-	requestAnimationFrame(() => {
-		pop.querySelector(".closeBtnR").onclick = () => {
-			alive = false;
-			pop.remove();
-		};
-
-		const rows = pop.querySelectorAll(".tab-on-overflow-menu");
-
-		rows.forEach((row, i) => {
-			const tab = row.classList.contains("hidden-tab")
-				? hidden[i - visible.length]
-				: visible[i];
-
-			row.addEventListener("click", () => tab.click());
-
-			row.querySelector(".more-btn").addEventListener("click", (ev) => {
-				ev.stopPropagation();
-				openTabMoreMenu(tab, ev.target);
-			});
-
-			row.querySelector(".close-btn").addEventListener("click", (ev) => {
-				ev.stopPropagation();
-				closeTab(tab.dataset.id);
-				alive = false;
-				pop.remove();
-				document.removeEventListener("click", onDocClick);
-			});
-		});
-	});
-
-	let popupRafId = null;
-	let popupAlive = false;
-
-	function updatePopup() {
-		if (!popupAlive || document.hidden) {
-			cancelAnimationFrame(popupRafId);
-			popupRafId = null;
-			return;
-		}
-
-		//... your update logic
-
-		popupRafId = requestAnimationFrame(updatePopup);
-	}
-
-	function showPopup() {
-		popupAlive = true;
-		if (!popupRafId) popupRafId = requestAnimationFrame(updatePopup);
-	}
-
-	function hidePopup() {
-		popupAlive = false;
-		cancelAnimationFrame(popupRafId);
-		popupRafId = null;
-		pop.remove();
-	}
-
-	document.addEventListener('visibilitychange', () => {
-		if (document.hidden) cancelAnimationFrame(popupRafId);
-		else if (popupAlive) popupRafId = requestAnimationFrame(updatePopup);
-	});
-
-	requestAnimationFrame(updatePopup);
-});
 
 function setUpshareMenu(url, name = '', data = {}) {
 	const content = `
@@ -3462,13 +3167,11 @@ function openFindPopup(elementClicked = null, x = 0, y = 0) {
 		display: 'flex',
 	});
 
-	findPopup.classList.add('find-pop')
+	findPopup.popup.classList.add('find-pop');
 
-	document.body.appendChild(findPopup);
-
-	const input = findPopup?.querySelector("#findInput");
-	const prevBtn = findPopup?.querySelector("#findPrev");
-	const nextBtn = findPopup?.querySelector("#findNext");
+	const input = findPopup.popup?.querySelector("#findInput");
+	const prevBtn = findPopup.popup?.querySelector("#findPrev");
+	const nextBtn = findPopup.popup?.querySelector("#findNext");
 
 	if (input) {
 		input.focus();
@@ -3482,14 +3185,14 @@ function openFindPopup(elementClicked = null, x = 0, y = 0) {
 	prevBtn.onclick = () => doFind(false);
 
 	document.querySelector('.closeBtnR').addEventListener('click', function () {
-		closeFindPopup();
+		findPopup.removePop();
 	});
 }
 
 function closeFindPopup() {
 	const a = getActive();
 	if (a?.webview) a.webview.stopFindInPage("clearSelection");
-	if (findPopup) findPopup.remove();
+	if (findPopup) findPopup.removePop();
 	findPopup = null;
 	currentFindText = "";
 }
@@ -3560,7 +3263,7 @@ function createPopup(content = ``, elementClicked = document.body, x = 0, y = 0,
 	popup.appendChild(closeBtn);
 
 	requestAnimationFrame(() => {
-		closeBtn.onclick = () => popup.remove();
+		closeBtn.onclick = () => removePop();
 	});
 
 	Object.assign(popup.style, cssStyles);
@@ -3568,32 +3271,51 @@ function createPopup(content = ``, elementClicked = document.body, x = 0, y = 0,
 	let top = y;
 	let left = x;
 
-	if (elementClicked) {
-		const rect = elementClicked.getBoundingClientRect();
-		top = rect.bottom + window.scrollY;
-		left = rect.left + window.scrollX;
-	}
+	const resizeHandler = () => {
+		if (elementClicked) {
+			const rect = elementClicked.getBoundingClientRect();
+			top = rect.bottom + window.scrollY;
+			left = rect.left + window.scrollX;
+		}
+
+		requestAnimationFrame(() => {
+			const menuRect = popup.getBoundingClientRect();
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
+
+			if (left + menuRect.width > viewportWidth) {
+				left = Math.max(0, viewportWidth - menuRect.width);
+			}
+			if (top + menuRect.height > viewportHeight) {
+				top = Math.max(0, viewportHeight - menuRect.height);
+			}
+
+			popup.style.top = `${top}px`;
+			popup.style.left = `${left}px`;
+			popup.classList.add('open');
+		});
+	};
+
+	// Run once immediately
+	resizeHandler();
+
+	// Debounced resize listener
+	let resizeTimeout;
+	const debouncedResize = () => {
+		clearTimeout(resizeTimeout);
+		resizeTimeout = setTimeout(resizeHandler, 150);
+	};
+
+	window.addEventListener('resize', debouncedResize);
 
 	document.body.appendChild(popup);
 
-	requestAnimationFrame(() => {
-		const menuRect = popup.getBoundingClientRect();
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
+	function removePop() {
+		popup.remove();
+		window.removeEventListener('resize', debouncedResize);
+	}
 
-		if (left + menuRect.width > viewportWidth) {
-			left = Math.max(0, viewportWidth - menuRect.width);
-		}
-		if (top + menuRect.height > viewportHeight) {
-			top = Math.max(0, viewportHeight - menuRect.height);
-		}
-
-		popup.style.top = `${top}px`;
-		popup.style.left = `${left}px`;
-		popup.classList.add('open');
-	});
-
-	return popup;
+	return { popup, removePop };
 }
 
 function createOverlayPopup(content, width, height, closeBtn = true) {
@@ -3663,30 +3385,6 @@ const activeMenuKeydownHandlers = new Set();
 // Helper globals and cleanup function (added to fix bugs and ensure safe cleanup)
 if (!window.activeMenuKeydownHandlers) window.activeMenuKeydownHandlers = new Set();
 
-if (typeof removeContextMenus !== 'function') {
-	// If the host page already defines removeContextMenus, this won't overwrite it.
-	window.removeContextMenus = function removeContextMenus() {
-		// Remove backdrops and menus
-		document.querySelectorAll('.context-menu-backdrop, .context-menu, .context-submenu').forEach(el => {
-			if (el.parentNode) el.parentNode.removeChild(el);
-		});
-
-		// Remove global click listener that we add in createContextMenu
-		document.removeEventListener('click', removeContextMenus);
-
-		// Remove any webview mousedown listeners we added (best-effort)
-		document.querySelectorAll('webview').forEach(webview => {
-			try { webview.removeEventListener('mousedown', removeContextMenus); } catch (e) { }
-		});
-
-		// Remove keydown handlers registered for shortcuts
-		if (window.activeMenuKeydownHandlers && window.activeMenuKeydownHandlers.size) {
-			window.activeMenuKeydownHandlers.forEach(h => window.removeEventListener('keydown', h));
-			window.activeMenuKeydownHandlers.clear();
-		}
-	};
-}
-
 function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, passThru = {}) {
 	removeContextMenus();
 	setTimeout(function () {
@@ -3728,9 +3426,6 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 		}
 
 		// Start hidden to measure size and avoid flicker
-		contextMenu.style.visibility = 'hidden';
-		contextMenu.style.opacity = '0';
-		contextMenu.style.pointerEvents = 'none';
 
 		// Build items first so menu has size when we measure
 		const buildItems = (list, parent) => {
@@ -3742,7 +3437,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					currentCategory = category;
 					const catDiv = document.createElement('div');
 					catDiv.classList.add('context-menu-category');
-					catDiv.textContent = category;
+					catDiv.innerHTML = `<span>${category}</span>`;
 					parent.appendChild(catDiv);
 				}
 
@@ -3783,10 +3478,6 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					subMenu.classList.add('context-submenu');
 					subMenu.style.position = 'absolute';
 					subMenu.style.zIndex = '1001';
-					subMenu.style.backdropFilter = 'blur(20px)';
-					subMenu.style.opacity = '0';
-					subMenu.style.pointerEvents = 'none';
-					subMenu.style.transition = 'opacity 120ms ease';
 					document.body.appendChild(subMenu);
 
 					// Build submenu items into the submenu element
@@ -3801,7 +3492,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 
 						// Default: place to the right of the item
 						let subLeft = itemRect.right + window.scrollX;
-						let subTop = itemRect.top + window.scrollY - 20;
+						let subTop = itemRect.top + window.scrollY;
 
 						// If it would overflow right, place to the left of the item
 						if (subLeft + subRect.width > vw) {
@@ -3855,6 +3546,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					subMenu.addEventListener('mouseleave', () => {
 						subMenu.style.opacity = '0';
 						subMenu.style.pointerEvents = 'none';
+						subMenu.style.animationDirection = 'reverse';
 					});
 
 				} else {
@@ -3903,16 +3595,15 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 			const vw = window.innerWidth;
 			const vh = window.innerHeight;
 
-			// If elementClicked was provided, prefer positioning relative to it (already set top/left above)
-			// Adjust to keep within viewport
-			if (left + menuRect.width > vw) left = Math.max(0, vw - menuRect.width);
-			if (top + menuRect.height > vh) top = Math.max(0, vh - menuRect.height);
+			let originX = "left";
+			let originY = "top";
 
+			if (left + menuRect.width > vw) { left = Math.max(0, vw - menuRect.width); originX = "right" }
+			if (top + menuRect.height > vh) { top = Math.max(0, vh - menuRect.height); originY = "bottom" }
+
+			contextMenu.style.transformOrigin = `${originX} ${originY}`;
 			contextMenu.style.top = `${Math.max(0, top)}px`;
 			contextMenu.style.left = `${Math.max(0, left)}px`;
-			contextMenu.style.visibility = 'visible';
-			contextMenu.style.opacity = '1';
-			contextMenu.style.pointerEvents = 'auto';
 			contextMenu.classList.add('open');
 		});
 
@@ -3924,27 +3615,37 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 				try { webview.addEventListener('mousedown', removeContextMenus); } catch (e) { }
 			});
 		}, 0);
-		document.querySelector('.context-item').focus();
+		document.querySelector('.context-menu-item')?.focus();
+		return contextMenu;
 	}, 50);
 }
 
 function removeContextMenus() {
-	setTimeout(function () {
-		if (document.querySelector('.hover-force')) {
-			document.querySelector('.hover-force').classList.remove('hover-force');
-		}
-	})
+	const menus = document.querySelectorAll('.context-menu, .context-submenu');
 
-	document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
+	menus.forEach(menu => {
+		// Force reflow so reverse animation always plays
+		menu.style.animation = 'none';
+		menu.offsetHeight; // reflow
+		menu.style.animation = '';
+		menu.style.animationDirection = 'reverse';
 
-	document.querySelectorAll('.context-submenu').forEach(menu => menu.remove());
+		menu.addEventListener('animationend', () => {
+			menu.remove();
+		}, { once: true });
+	});
 
-	document.querySelectorAll('.context-menu-backdrop').forEach(backdrop => backdrop.remove());
+	// Remove hover-force safely
+	const hover = document.querySelector('.hover-force');
+	if (hover) hover.classList.remove('hover-force');
 
+	// Remove backdrop immediately (or animate it too if you want)
+	document.querySelectorAll('.context-menu-backdrop').forEach(b => b.remove());
+
+	// Remove listeners
 	document.removeEventListener('click', removeContextMenus);
-
-	document.querySelectorAll('webview').forEach(webview => {
-		webview.removeEventListener('mousedown', removeContextMenus);
+	document.querySelectorAll('webview').forEach(w => {
+		w.removeEventListener('mousedown', removeContextMenus);
 	});
 
 	for (const fn of activeMenuKeydownHandlers) {
@@ -4008,10 +3709,17 @@ async function showZoomControls(webview, zoomSize) {
 	const content = `
 		<div class="zoom-controls">
 			<div class="zoom-percent">${percent}%</div>
+			
 			<div class="zoom-buttons">
-				<button class="zoom-action" data-action="out"><i class="material-symbols-rounded">zoom_out</i></button>
-				<button class="zoom-action" data-action="in"><i class="material-symbols-rounded">zoom_in</i></button>
-				<button class="zoom-action" data-action="reset"><i class="material-symbols-rounded">restart_alt</i></button>
+				<button class="zoom-action" data-action="out">
+					<i class="material-symbols-rounded">zoom_out</i>
+				</button>
+				<button class="zoom-action" data-action="in">
+					<i class="material-symbols-rounded">zoom_in</i>
+				</button>
+				<button class="zoom-action" data-action="reset">
+					Reset
+				</button>
 			</div>
 		</div>
 	`;
@@ -4023,18 +3731,17 @@ async function showZoomControls(webview, zoomSize) {
 
 	if (!zoomPopupRef) {
 		zoomPopupRef = createPopup(content, zoomBtn, 0, 0, {
-			minWidth: '170px',
+			minWidth: '210px',
 			padding: '10px',
-			borderRadius: '10px',
 			backgroundColor: 'var(--scheme-2), #1a1a1b)',
 			color: 'var(--main-text-color, #fff)',
 			boxShadow: '0 6px 25px rgba(0,0,0,0.45)',
 			zIndex: '1200'
 		});
-		if (!zoomPopupRef) return;
-		zoomPopupRef.classList.add('zoom-popup');
+		if (!zoomPopupRef.popup) return;
+		zoomPopupRef.popup.classList.add('zoom-popup');
 
-		zoomPopupRef.querySelectorAll('.zoom-action').forEach(button => {
+		zoomPopupRef.popup.querySelectorAll('.zoom-action').forEach(button => {
 			button.addEventListener('click', (e) => {
 				e.stopPropagation();
 				const action = button.dataset.action;
@@ -4044,17 +3751,15 @@ async function showZoomControls(webview, zoomSize) {
 			});
 		});
 
-		zoomPopupRef.querySelector('.closeBtnR').onclick = () => {
-			clearTimeout(zoomPopupTimeout);
-		}
+		zoomPopupRef.popup.querySelector('.closeBtnR').remove();
 
 	} else {
-		zoomPopupRef.querySelector('.zoom-percent').innerHTML = `${percent}%`;
+		zoomPopupRef.popup.querySelector('.zoom-percent').innerHTML = `${percent}%`;
 	}
 
 	zoomPopupTimeout = setTimeout(() => {
 		if (zoomPopupRef) {
-			zoomPopupRef.remove();
+			zoomPopupRef.removePop();
 			zoomPopupRef = null;
 		}
 	}, 3500);
@@ -4109,7 +3814,7 @@ function showTabInfo(title, url, favicon, elementHover, shortId) {
 
 	currentInfoBox.innerHTML = "";
 
-	let icon
+	let icon;
 
 	const item = tabs.find(t =>
 		t.title === title ||
@@ -4118,28 +3823,25 @@ function showTabInfo(title, url, favicon, elementHover, shortId) {
 		t.shortId === shortId
 	);
 
-	if (item.audio) {
-		const a = document.createElement('t-info-noti')
-		a.innerHTML = '<i class="material-symbols-rounded">play_circle</i>  Tab Is Playing Media'
-		currentInfoBox.appendChild(a)
-	}
-
+	// Icon
 	if (favicon) {
 		icon = document.createElement('img');
 		Object.assign(icon.style, { width: "20px", height: "20px", marginRight: "10px" });
 		icon.src = favicon;
 		currentInfoBox.appendChild(icon);
 	} else {
-		icon = document.createElement('i')
-		icon.classList.add('material-symbols-rounded')
-		icon.textContent = 'globe'
-		currentInfoBox.appendChild(icon)
+		icon = document.createElement('i');
+		icon.classList.add('material-symbols-rounded');
+		icon.textContent = 'globe';
+		currentInfoBox.appendChild(icon);
 	}
 
+	// Title
 	const titleEl = document.createElement('strong');
 	titleEl.textContent = title;
 	currentInfoBox.appendChild(titleEl);
 
+	// URL
 	if (url) {
 		const urlEl = document.createElement('div');
 		urlEl.textContent = getBaseURL(url);
@@ -4147,43 +3849,65 @@ function showTabInfo(title, url, favicon, elementHover, shortId) {
 		currentInfoBox.appendChild(urlEl);
 	}
 
+	// Notification container
+	const tInfo = document.createElement('t-info-noti');
+	currentInfoBox.appendChild(tInfo);
+
+	// Screenshot preview
 	setTimeout(() => {
 		const wv = document.getElementById(shortId);
 		if (wv && typeof wv.capturePage === "function") {
 			const now = Date.now();
 			const last = lastCaptureAt.get(shortId) || 0;
+
 			if (now - last >= CAPTURE_MIN_MS) {
 				const hoverId = shortId;
 				lastCaptureAt.set(shortId, now);
+
 				wv.capturePage().then(image => {
 					if (hoverId !== activeHoverId) return;
+
 					const dataUrl = image.toDataURL();
 					const img = new Image();
 					img.src = dataUrl;
 					img.classList.add('img-tab-view');
-					currentInfoBox.appendChild(img);
+
+					if (item?.audio) {
+						currentInfoBox.insertBefore(img, currentInfoBox.querySelector('t-info-noti'));
+					} else {
+						currentInfoBox.appendChild(img);
+					}
 				}).catch(err => {
 					console.warn('Tab hover preview capture failed:', err);
 				});
 			}
 		}
-	}, 400)
+	}, 400);
 
+	// Position popup
 	const rect = elementHover.getBoundingClientRect();
 	currentInfoBox.style.position = 'fixed';
 	currentInfoBox.style.top = `${rect.bottom + 5}px`;
 	currentInfoBox.style.left = `${rect.left}px`;
 
-	if (isShown) {
-		currentInfoBox.style.display = "block";
-	} else {
-		clearTimeout(showTimer);
-		showTimer = setTimeout(() => {
-			currentInfoBox.style.display = "block";
-			isShown = true;
-			setTimeout(() => currentInfoBox.classList.add('show'), 10);
-		}, 1000);
+	// Show popup
+	currentInfoBox.style.display = "block";
+	isShown = true;
+	setTimeout(() => currentInfoBox.classList.add('show'), 600);
+
+	// Helper for notifications
+	const addTMessage = (message, icon) => {
+		let messageDiv = document.createElement('div');
+		messageDiv.innerHTML = `<i class="material-symbols-rounded">${icon}</i> <span>${message}</span>`;
+		tInfo.appendChild(messageDiv);
+	};
+
+	// Add audio indicator
+	if (item?.audio) {
+		addTMessage('Media is playing from this tab', 'media_link');
 	}
+
+	console.log(item);
 }
 
 function hideTabInfo() {
@@ -4273,7 +3997,7 @@ if (addressMore) {
 				icType: 'GF',
 				icon: 'search',
 				category: 'Zoom',
-				function: () => openFindPopup()
+				function: () => openFindPopup(addressMore)
 			},
 			{
 				name: "Share Link",
@@ -4474,7 +4198,7 @@ async function shareTab(url) {
 
 	const shareHTML = shareOptions.map(opt => `
         <a class="share-btn" data-action="${opt.action}">
-            <i class="${opt.icon}"></i> ${opt.name}
+            <i class="${opt.icon}"></i> <span>${opt.name}</span>
         </a>
     `).join("");
 
@@ -4512,12 +4236,11 @@ async function shareTab(url) {
     `;
 
 	let pop = createPopup(content, addressMore, undefined, undefined, {
-		borderRadius: '12px',
 		width: '650px',
 		minHeight: 'fit-content'
 	});
 
-	pop.id = 'shareMenu'
+	pop.popup.id = 'shareMenu'
 
 	// Attach click handlers AFTER popup is created
 	setTimeout(() => attachShareHandlers(info), 50);
@@ -4593,18 +4316,15 @@ function toggleFullScreen() {
 
 function moveTabToStart(tab) {
 	tabsContainer.insertBefore(tab, tabsContainer.children[0]);
-	updateOverflow();
 }
 
 function moveTabToEnd(tab) {
 	tabsContainer.insertBefore(tab, tabsContainer.querySelector('.new-tab'));
-	updateOverflow();
 }
 
 function togglePin(tab) {
 	tab.classList.toggle("pinned");
 	moveTabToStart(tab);
-	updateOverflow();
 }
 
 function duplicateTabO(id) {
@@ -5558,16 +5278,33 @@ function onAddressInputChange(q) {
 
 // Wire address behaviors
 if (address) {
+	address.addEventListener('mousedown', (event) => {
+		if (document.activeElement !== address) {
+			event.preventDefault();
+			address.focus();
+			address.select();
+		}
+	});
+
+	address.addEventListener('click', () => {
+		if (document.activeElement === address) {
+			address.select();
+		}
+	});
+
 	address.addEventListener('focus', () => {
 		const tab = getActive();
 		const webUrl = tab.webview.getURL();
 
-		if (tab?.webview) {
-			address.select();
-		}
-
 		if (!webUrl.includes('pages/new-tab/index.html')) {
 			address.value = tab.webview.getURL();
+		}
+
+		if (tab?.webview) {
+			address.select();
+			requestAnimationFrame(() => {
+				address.select();
+			});
 		}
 
 		setTimeout(() => {
@@ -6032,37 +5769,7 @@ window.customConfirm = (msg) =>
 window.customPrompt = async (msg, def = "") =>
 	await showDialog({ title: "Prompt", message: msg, type: "prompt", defaultValue: def });// Media Manager Functions
 
-// Permission management
-async function managePermission(origin, permission) {
-	const decision = await loadPermission(origin, permission);
-	const content = `
-        <h4>Manage Permission</h4>
-        <p>${origin} - ${permission}</p>
-        <p>Current: ${decision || 'Not set'}</p>
-        <div class="flex" style="gap: 10px;">
-            <button id="allow">Allow</button>
-            <button id="deny">Deny</button>
-            <button id="reset">Reset</button>
-        </div>
-    `;
-	const popup = createPopup(content, document.getElementById('viewWebsiteInfo'));
-	document.getElementById('allow').onclick = async () => {
-		await savePermission(origin, permission, 'allow');
-		popup.remove();
-	};
-	document.getElementById('deny').onclick = async () => {
-		await savePermission(origin, permission, 'deny');
-		popup.remove();
-	};
-	document.getElementById('reset').onclick = async () => {
-		const db = await openDB();
-		const tx = db.transaction('permissions', 'readwrite');
-		const store = tx.objectStore('permissions');
-		store.delete(`${origin}:${permission}`);
-		await transactionDone(tx);
-		popup.remove();
-	};
-}// Download Manager Functions
+// Download Manager Functions
 let downloads = [];
 
 function updateDownloadManager() {
