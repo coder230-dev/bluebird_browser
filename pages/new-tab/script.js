@@ -82,20 +82,37 @@ window.addEventListener('DOMContentLoaded', async function () {
         await renderCardItems();
         document.getElementById('search-suggestion').focus();
     }, 1000)
-})
-
-window.addEventListener('scroll', function () {
-    const y = window.scrollY;
-    const cont = document.getElementById('s-i');
-
-    if (y > 270) {
-        cont.style.position = 'fixed';
-        cont.style.zIndex = '5';
-    } else {
-        cont.style.position = 'absolute';
-        cont.style.zIndex = '0';
-    }
 });
+
+loadProfileIcon();
+
+async function loadProfileIcon() {
+    let profilesList = await window.api.profiles.list();
+    let curProfile = profilesList.find((p) => p.name === localStorage.getItem('currentProfile'));
+
+    let profileBtn = document.getElementById('profile-btn');
+    profileBtn.innerHTML = '';
+
+    let img = document.createElement('img');
+
+    if (typeof p.avatar === "string" && p.avatar.startsWith("data:")) {
+        icon = {
+            type: "image",
+            value: p.avatar
+        };
+    } else {
+        const letter = (p.avatar || p.name || "?").trim()[0]?.toUpperCase() || "?";
+        icon = {
+            type: "letter",
+            value: letter
+        };
+    }
+    
+    img.src = curProfile.avatar;
+
+    console.log(curProfile);
+
+}
 
 document.addEventListener('focus', async function () {
     await renderCardItems()
@@ -386,6 +403,15 @@ async function loadAllSettings() {
     return res || [];
 
     savedSettings = res;
+}
+
+async function listProfiles() {
+    const db = await openDB();
+    const tx = db.transaction('profiles', 'readonly');
+    const store = tx.objectStore('profiles');
+    const req = store.getAll();
+    const res = await promisifyRequest(req);
+    return res || [];
 }
 
 const address = document.getElementById('search-suggestion');

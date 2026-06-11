@@ -699,43 +699,43 @@ async function buildAppMenu(win) {
 		}
 	};
 
+	let test = false;
+
 	const menuOptions = [
 		{
 			label: app.name,
 			submenu: [
-				{
-					label: 'About Bluebird Browser',
-					click: async () => {
-						sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/' });
-					}
-				},
+				{ label: 'About Bluebird Browser', click: () => sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/' }) },
 				{ type: 'separator' },
 				{ role: 'services' },
+				{ type: 'separator' },
 				{ label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => send('openSettings') },
 				{ type: 'separator' },
 				{ role: 'hide' },
 				{ role: 'hideOthers' },
 				{ role: 'unhide' },
 				{ type: 'separator' },
-				{ label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', click: () => send('closeWindow') },
-				isMac ? { role: 'quit' } : { role: 'close' }
+				...(isMac ? [{ role: 'quit' }] : [])
 			]
 		},
 
 		{
-			label: 'Edit',
+			label: 'File',
 			submenu: [
-				{ role: 'undo' },
-				{ role: 'redo' },
+				{ label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => send('newWindow') },
+				{ label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => send('newTab') },
 				{ type: 'separator' },
-				{ role: 'cut' },
-				{ role: 'copy' },
-				{ role: 'paste' },
-				{ role: 'delete' },
+				{ label: 'Open in Sidebar', click: () => send('openInSidebarCurrent') },
 				{ type: 'separator' },
-				{ role: 'selectAll' }
+				{
+					label: 'Close Window',
+					accelerator: isMac ? 'CmdOrCtrl+Shift+W' : 'Alt+F4',
+					click: (menuItem, browserWindow) => browserWindow?.close()
+				}
 			]
 		},
+
+		{ role: 'editMenu' },
 
 		{
 			label: 'View',
@@ -747,7 +747,7 @@ async function buildAppMenu(win) {
 				{ label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => send('zoomOut') },
 				{ label: 'Reset Zoom', accelerator: 'CmdOrCtrl+0', click: () => send('zoomReset') },
 				{ type: 'separator' },
-				{ label: 'Toggle Fullscreen', accelerator: 'CmdOrCtrl+Alt+F', click: () => send('toggleFullscreen') },
+				{ label: 'Toggle Fullscreen', accelerator: 'CmdOrCtrl+Alt+F', click: () => send('toggleFullscreen') }
 			]
 		},
 
@@ -759,9 +759,7 @@ async function buildAppMenu(win) {
 				{ label: 'Back', accelerator: 'Alt+Left', click: () => send('goBack') },
 				{ label: 'Forward', accelerator: 'Alt+Right', click: () => send('goForward') },
 				{ type: 'separator' },
-				{ label: 'Find', accelerator: 'CmdOrCtrl+F', click: () => send('findInPage') },
-				{ type: 'separator' },
-				{ label: 'Open in Sidebar', click: () => send('openInSidebarCurrent') }
+				{ label: 'Find', accelerator: 'CmdOrCtrl+F', click: () => send('findInPage') }
 			]
 		},
 
@@ -792,9 +790,6 @@ async function buildAppMenu(win) {
 			submenu: [
 				{ label: 'Tabs Manager', accelerator: 'CmdOrCtrl+Alt+T', click: () => send('tabManager') },
 				{ type: 'separator' },
-				{ label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => send('newWindow') },
-				{ type: 'separator' },
-				{ label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => send('newTab') },
 				{ label: 'Duplicate Tab', click: () => send('duplicateTab') },
 				{ type: 'separator' },
 				{ label: 'Next Tab', accelerator: 'Ctrl+Tab', click: () => send('nextTab') },
@@ -802,7 +797,7 @@ async function buildAppMenu(win) {
 				{ type: 'separator' },
 				{ label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: () => send('closeTab') },
 				{ label: 'Close Tab To the Right', accelerator: 'CmdOrCtrl+Alt+Shift+W', click: () => send('closeTabOnRight') },
-				{ label: 'Close Other Tabs', accelerator: 'CmdOrCtrl+Shift+E', click: () => send('closeOtherTabs') },
+				{ label: 'Close Other Tabs', accelerator: 'CmdOrCtrl+Shift+E', click: () => send('closeOtherTabs') }
 			]
 		},
 
@@ -817,46 +812,25 @@ async function buildAppMenu(win) {
 				{ label: 'Profile Manager…', click: () => loadBrowserWindow('pages/profilePages/profileManager.html', 800, 800) }
 			]
 		},
+
 		{
 			role: 'help',
 			submenu: [
 				{ label: `Browser ver. ${app.getVersion()}`, enabled: false },
-				{
-					label: 'Report An Issue...',
-					click: async () => {
-						sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/issues/new' });
-					}
-				},
+				{ label: 'Report An Issue...', click: () => sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser/issues/new' }) },
 				{ type: 'separator' },
-				{ label: `Built with Electron & Chromium`, enabled: false },
-				{
-					label: 'Learn More about Electron',
-					click: async () => {
-						sendAction("openInNew", { url: 'https://electronjs.org' })
-					}
-				},
-				{
-					label: 'Learn More about The Chromium Project',
-					click: async () => {
-						sendAction("openInNew", { url: 'https://chromium.org' });
-					}
-				},
-				{
-					label: 'About this Browser',
-					click: () => loadBrowserWindow('', 750, 750, undefined, true, { resizeable: true }, [])
-				},
+				{ label: 'Built with Electron & Chromium', enabled: false },
+				{ label: 'Learn More about Electron', click: () => sendAction("openInNew", { url: 'https://electronjs.org' }) },
+				{ label: 'Learn More about The Chromium Project', click: () => sendAction("openInNew", { url: 'https://chromium.org' }) },
+				{ label: 'About this Browser', click: () => loadBrowserWindow('', 750, 750, undefined, true, { resizeable: true }, []) },
 				{ type: 'separator' },
-				{ label: `Open Source`, enabled: false },
-				{
-					label: 'GitHub Project',
-					click: async () => {
-						sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser' });
-					}
-				},
+				{ label: 'Open Source', enabled: false },
+				{ label: 'GitHub Project', click: () => sendAction("openInNew", { url: 'https://github.com/coder230-dev/bluebird_browser' }) },
 				{ role: 'toggleDevTools' }
 			]
 		}
 	];
+
 
 
 	return Menu.buildFromTemplate(menuOptions);

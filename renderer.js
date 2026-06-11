@@ -540,8 +540,8 @@ if (profileInfoEl) {
 				name: p.name,
 				category: "Profiles",
 				submenu: [
-					{ name: 'Close this Window & Switch', icon: 'change_circle', icType: 'GF', category: 'Profile', function: () => { window.close(); window.electronAPI?.newWindow?.(p.name, 'new-window'); } },
 					{ name: 'Open Profile in New Window', icon: 'open_in_new', icType: 'GF', category: 'Profile', function: () => { window.electronAPI?.newWindow?.(p.name, 'new-window'); } },
+					{ name: 'Close this Window & Switch', icon: 'change_circle', icType: 'GF', category: 'Profile', function: () => { window.close(); window.electronAPI?.newWindow?.(p.name, 'new-window'); } },
 					{ name: 'Manage this Profile', icon: 'change_circle', icType: 'GF', category: 'Manage', function: () => { openSidebarApp('pages/settings/index.html#profile', 'Settings', true) } }
 				],
 				function: () => {

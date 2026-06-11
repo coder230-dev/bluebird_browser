@@ -2,7 +2,7 @@ let db
 
 function openDB() {
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open('BrowserProfilesDB', 5);
+		const request = indexedDB.open('BrowserProfilesDB', 6);
 
 		request.onupgradeneeded = (event) => {
 			db = event.target.result;
