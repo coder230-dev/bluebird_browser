@@ -433,8 +433,197 @@ circle {
     background-color: var(--scheme-3);
 }
 
-/* Switch background change */
 .check-toggle:checked+.toggleSwitch {
     background-color: var(--scheme-9);
     transition-duration: .2s;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+select {
+    background: var(--scheme-3) !important;
+    color: var(--scheme-10) !important;
+    border: 1px solid var(--scheme-5) !important;
+    border-radius: 8px !important;
+    font-family: 'Poppins' !important;
+    padding: 10px !important;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--scheme-8) !important;
+}
+
+select option {
+    background: var(--scheme-3);
+    color: var(--scheme-10);
+}
+
+/* Utility Classes for Settings */
+.setting-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.setting-group-full {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-label h4 {
+    margin: 0;
+    padding: 0;
+    font-size: 0.95rem;
+    font-family: "Montserrat";
+    color: var(--scheme-10);
+}
+
+.setting-label p {
+    margin: 0;
+    padding: 0;
+    font-size: 0.85rem;
+    color: var(--scheme-8);
+}
+
+.setting-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--scheme-3);
+    border-radius: 10px;
+    border: 1px solid var(--scheme-9);
+    margin-bottom: 8px;
+}
+
+.setting-row:last-child {
+    margin-bottom: 0;
+}
+
+.setting-row.two-col {
+    grid-template-columns: 1fr 1fr;
+}
+
+.setting-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.btn-primary {
+    flex: 1;
+    padding: 10px 15px;
+    background: var(--scheme-7);
+    color: var(--scheme-1);
+    border: none;
+    border-radius: 8px;
+    font-family: "Poppins";
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--scheme-8);
+}
+
+.btn-secondary {
+    flex: 1;
+    padding: 10px 15px;
+    background: var(--scheme-5);
+    color: var(--scheme-10);
+    border: 1px solid var(--scheme-7);
+    border-radius: 8px;
+    font-family: "Poppins";
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--scheme-6);
+}
+
+.btn-danger {
+    flex: 1;
+    padding: 10px 15px;
+    background: #c94949;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: "Poppins";
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-danger:hover {
+    background: #b83636;
+}
+
+.info-box {
+    background: var(--scheme-3);
+    border-left: 4px solid var(--scheme-8);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: var(--scheme-10);
+    margin: 12px 0;
+}
+
+.tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--scheme-7);
+    color: var(--scheme-1);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.pill-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.pill-button {
+    padding: 8px 16px;
+    border: 1px solid var(--scheme-7);
+    background: transparent;
+    color: var(--scheme-10);
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: "Poppins";
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.pill-button:hover {
+    background: var(--scheme-5);
+}
+
+.pill-button.active {
+    background: var(--scheme-7);
+    color: var(--scheme-1);
+    border-color: var(--scheme-7);
 }

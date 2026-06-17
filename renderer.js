@@ -979,11 +979,184 @@ async function loadBrowserSettings() {
 
 	// Bookmark Bar
 	const bkMB = document.getElementById("bookmarks-bar");
-
 	if (bkMB) {
 		const show = await loadSetting("showBookmarksBar");
 		bkMB.style.display = show ? "flex" : "none";
 		bkMB.classList.toggle("displayed", show);
+	}
+
+	// ============ General Settings ============
+	// Startup behavior
+	const startup = await loadSetting('startup') || 'homepage';
+	console.log('Startup behavior:', startup);
+	// This would be used in main.js when opening the browser
+
+	// Homepage
+	const homepage = await loadSetting('homepage');
+	if (homepage) {
+		window.homepageURL = homepage;
+	}
+
+	// Search engine
+	const searchEngine = await loadSetting('searchEngine') || 'google';
+	window.defaultSearchEngine = searchEngine;
+
+	// Language
+	const language = await loadSetting('language') || 'en';
+	document.documentElement.lang = language;
+
+	// ============ Behavior Settings ============
+	// Smooth scrolling
+	const smoothScroll = await loadSetting('smoothScrolling');
+	document.documentElement.style.scrollBehavior = smoothScroll ? 'smooth' : 'auto';
+
+	// Restore tabs
+	const restoreTabs = await loadSetting('restoreTabs');
+	window.restoreTabsOnStartup = Boolean(restoreTabs);
+
+	// ============ Performance Settings ============
+	// Memory Saver - enable tab discarding
+	const memorySaver = await loadSetting('memorySaver');
+	window.enableMemorySaver = Boolean(memorySaver);
+
+	// Hardware Acceleration
+	const hardwareAccel = await loadSetting('hardwareAcceleration');
+	if (hardwareAccel) {
+		document.documentElement.style.perspective = 'none'; // Enable GPU acceleration
+		document.documentElement.style.transform = 'translate3d(0,0,0)';
+	}
+
+	// Background Tab Throttling
+	const tabThrottling = await loadSetting('backgroundTabThrottling');
+	window.backgroundTabThrottling = Boolean(tabThrottling);
+
+	// Preload Pages
+	const preloadPages = await loadSetting('preloadPages');
+	window.preloadPages = Boolean(preloadPages);
+
+	// Performance Alerts
+	const performanceAlerts = await loadSetting('performanceAlerts');
+	window.showPerformanceAlerts = Boolean(performanceAlerts);
+
+	// ============ Privacy & Security Settings ============
+	// Tracking Prevention
+	const trackingPrevention = await loadSetting('trackingPrevention');
+	window.trackingProtection = Boolean(trackingPrevention);
+
+	// Do Not Track
+	const dnt = await loadSetting('doNotTrack');
+	window.doNotTrack = Boolean(dnt);
+
+	// HTTPS Only
+	const httpsOnly = await loadSetting('httpsOnly');
+	window.httpsOnly = Boolean(httpsOnly);
+
+	// Password Manager
+	const passwordMgr = await loadSetting('passwordManager');
+	window.enablePasswordManager = passwordMgr !== false; // Default true
+
+	// Dangerous Sites Warning
+	const dangerousSites = await loadSetting('dangerousSitesWarning');
+	window.warnDangerousSites = dangerousSites !== false; // Default true
+
+	// Ad Blocker
+	const adblock = await loadSetting('adBlockEnabled');
+	window.adBlockEnabled = Boolean(adblock);
+
+	// ============ Downloads Settings ============
+	// Warn about dangerous downloads
+	const warnDangerous = await loadSetting('warnDangerousDownload');
+	window.warnDangerousDownloads = warnDangerous !== false; // Default true
+
+	// Open PDFs in browser
+	const pdfInBrowser = await loadSetting('openPDFInBrowser');
+	window.openPDFInBrowser = Boolean(pdfInBrowser);
+
+	// Save downloads history
+	const saveDownloadsHist = await loadSetting('saveDownloadsHistory');
+	window.saveDownloadsHistory = saveDownloadsHist !== false; // Default true
+
+	// ============ Site Settings / Permissions ============
+	const permissions = await loadSetting('permissions') || {};
+	window.sitePermissions = {
+		camera: permissions.camera || 'ask',
+		microphone: permissions.microphone || 'ask',
+		location: permissions.location || 'ask',
+		notifications: permissions.notifications || 'ask',
+		clipboard: permissions.clipboard || 'ask',
+		javascript: permissions.javascript !== false, // Default true
+		autoplay: permissions.autoplay || 'allow',
+		popups: permissions.popups || false,
+		usb: permissions.usb || false,
+		serial: permissions.serial || false,
+		midi: permissions.midi || false
+	};
+
+	// Cookies setting
+	const cookiesSetting = await loadSetting('cookies.setting') || 'all';
+	window.cookiePolicy = cookiesSetting;
+
+	// ============ Experimental Features ============
+	const experimental = {
+		aiSearch: await loadSetting('experimental.aiSearch'),
+		aiTabOrganization: await loadSetting('experimental.aiTabOrganization'),
+		verticalTabs: await loadSetting('experimental.verticalTabs'),
+		compactMode: await loadSetting('experimental.compactMode'),
+		cookieIsolation: await loadSetting('experimental.cookieIsolation'),
+		fingerprintProtection: await loadSetting('experimental.fingerprintProtection'),
+		debugInfo: await loadSetting('experimental.debugInfo')
+	};
+	window.experimentalFeatures = experimental;
+
+	// Show debug info if enabled
+	if (experimental.debugInfo) {
+		console.log('Experimental Features:', experimental);
+	}
+
+	// Apply compact mode
+	if (experimental.compactMode) {
+		document.documentElement.setAttribute('data-compact-mode', 'true');
+	}
+
+	// Apply vertical tabs layout
+	if (experimental.verticalTabs) {
+		document.documentElement.setAttribute('data-vertical-tabs', 'true');
+	}
+
+	console.log('Browser settings loaded successfully');
+}
+
+// Apply browser settings to a webview
+function applySettingsToWebview(webview) {
+	// Apply JavaScript permission
+	if (window.sitePermissions && window.sitePermissions.javascript === false) {
+		// Disable JavaScript for this webview
+		webview.executeJavaScript(`
+			document.addEventListener('beforeload', (e) => {
+				if (e.url && !e.url.startsWith('about:')) {
+					// Block all scripts
+					const scripts = document.querySelectorAll('script');
+					scripts.forEach(s => s.remove());
+				}
+			});
+		`).catch(e => console.warn('Could not disable JS for webview:', e));
+	}
+
+	// Apply HTTPS only mode
+	if (window.httpsOnly) {
+		const originalNavigate = webview.src;
+		if (originalNavigate && originalNavigate.startsWith('http://')) {
+			console.warn('HTTPS Only mode: blocking insecure connection to', originalNavigate);
+			webview.src = originalNavigate.replace('http://', 'https://');
+		}
+	}
+
+	// Apply autoplay restrictions
+	if (window.sitePermissions && window.sitePermissions.autoplay === 'block') {
+		webview.setAttribute('allow', webview.getAttribute('allow')?.replace('autoplay;', ''));
+	} else if (window.sitePermissions && window.sitePermissions.autoplay === 'allow-muted') {
+		// This requires more complex handling in preload.js
+		webview.setAttribute('data-autoplay-muted', 'true');
 	}
 }
 
@@ -1150,6 +1323,39 @@ window.addEventListener("message", (event) => {
 			console.error(e);
 		}
 		console.log("Settings updated:");
+	} else if (event.data.action === 'clear-browsing-data') {
+		// Clear history, cookies, and cache
+		if (event.data.clearHistory) {
+			// Clear IndexedDB history
+			openDB().then(db => {
+				const tx = db.transaction('history', 'readwrite');
+				tx.objectStore('history').clear();
+			}).catch(e => console.error('Failed to clear history:', e));
+		}
+		if (event.data.clearCache) {
+			// Clear browser cache
+			if (caches) {
+				caches.keys().then(names => {
+					names.forEach(name => caches.delete(name));
+				});
+			}
+		}
+		console.log('Cleared browsing data');
+	} else if (event.data.action === 'clear-download-history') {
+		// Implement if you have a downloads store
+		console.log('Clear download history requested');
+		if (window.api?.downloads?.clearHistory) {
+			window.api.downloads.clearHistory();
+		}
+	} else if (event.data.action === 'reset-settings') {
+		// Reset all settings to defaults
+		openDB().then(db => {
+			const tx = db.transaction('settings', 'readwrite');
+			const store = tx.objectStore('settings');
+			// Don't delete profiles and bookmarks - only reset browser settings
+			store.clear();
+			loadBrowserSettings();
+		}).catch(e => console.error('Failed to reset settings:', e));
 	} else if (event.data.removeTab) {
 		closeTab(event.data.removeTab);
 	} else if (event.data.type === 'get-media-list') {

@@ -22,14 +22,15 @@
                 class="material-symbols-rounded">account_circle</i>Profile</a>
         <a data-target="appearance" href="#appearance"><i class="material-symbols-rounded">brush</i> Appearance</a>
         <a data-target="general" href="#general"><i class="material-symbols-rounded">settings</i> General</a>
+        <a data-target="performance" href="#performance"><i class="material-symbols-rounded">speed</i> Performance</a>
         <a data-target="privacy" href="#privacy"><i class="material-symbols-rounded">privacy</i> Privacy & Security</a>
         <a data-target="downloads" href="#downloads"><i class="material-symbols-rounded">download</i> Downloads</a>
         <a data-target="sitesettings" href="#sitesettings"><i class="material-symbols-rounded">page_info</i> Site
             Settings</a>
-        <a data-target="about" href="#about"><i class="material-symbols-rounded">info</i> About Browser</a>
+        <a data-target="about" href="#about"><i class="material-symbols-rounded">info</i> About</a>
         <hr>
         <a data-target="experimentalbeta" href="#experimentalbeta"><i class="material-symbols-rounded">experiment</i>
-            Experimental Features</a>
+            Experimental</a>
     </aside>
 
     <main id="main-content">
@@ -198,9 +199,174 @@
             </div>
         </section>
         <hr>
-        <p>Settings below are under construction. GO DOWN AT YOUR OWN RISK</p>
         <section id="general" class="setting-section">
             <h2>General</h2>
+            
+            <div class="card">
+                <h3>On Startup</h3>
+                <p>Choose what appears when you open Bluebird Browser.</p>
+                <div class="pill-buttons">
+                    <button class="pill-button" id="startup-homepage-btn" onclick="updateStartup('homepage')">Homepage</button>
+                    <button class="pill-button" id="startup-last-session-btn" onclick="updateStartup('last-session')">Restore Last Session</button>
+                    <button class="pill-button" id="startup-new-tab-btn" onclick="updateStartup('new-tab')">New Tab</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Homepage & Search</h3>
+                <div class="setting-group-full">
+                    <div>
+                        <label class="setting-label">
+                            <h4>Homepage URL</h4>
+                            <p>Set your homepage URL</p>
+                        </label>
+                        <input type="text" id="homepage-input" placeholder="https://example.com" style="margin-top: 8px;">
+                    </div>
+                    <div>
+                        <label class="setting-label">
+                            <h4>Default Search Engine</h4>
+                            <p>Choose your default search engine</p>
+                        </label>
+                        <select id="search-engine" style="margin-top: 8px;">
+                            <option value="google">Google</option>
+                            <option value="ddg">DuckDuckGo</option>
+                            <option value="bing">Bing</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="setting-buttons">
+                        <button class="btn-primary" onclick="saveHomepage()">Save Homepage</button>
+                        <button class="btn-primary" onclick="saveSearchEngine()">Save Search Engine</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Autofill</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Autofill Addresses</h4>
+                        <p>Save and autofill address information</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autofill-addresses-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Autofill Payment Methods</h4>
+                        <p>Save and autofill payment card information</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autofill-payments-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Behavior</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Smooth Scrolling</h4>
+                        <p>Enable smooth scrolling animations</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="smooth-scrolling-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Restore Tab Groups</h4>
+                        <p>Restore tab groups on startup</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="restore-tabs-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Language</h4>
+                        <p>Set your browser language</p>
+                    </div>
+                    <select id="language-select" style="max-width: 200px;">
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+        <section id="performance" class="setting-section">
+            <h2>Performance</h2>
+            <div class="card">
+                <h3>Memory & Speed</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Memory Saver</h4>
+                        <p>Reduce memory usage by managing inactive tabs</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="memory-saver-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Hardware Acceleration</h4>
+                        <p>Use GPU to improve performance (restart required)</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="hardware-acceleration-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Background Tab Throttling</h4>
+                        <p>Limit background tab resource usage</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="tab-throttling-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Preloading</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Preload Pages</h4>
+                        <p>Preload suggested pages while browsing</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="preload-pages-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="info-box">
+                    <i class="material-symbols-rounded" style="vertical-align: middle; margin-right: 6px;">info</i>
+                    Preloading may consume additional bandwidth
+                </div>
+            </div>
+            <div class="card">
+                <h3>Performance Monitoring</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Show Performance Alerts</h4>
+                        <p>Alert when sites use excessive resources</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="performance-alerts-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
         </section>
         <section id="privacy" class="setting-section">
             <h2>Privacy & Security</h2>
@@ -216,19 +382,388 @@
                     </label>
                 </div>
             </div>
+            <div class="card">
+                <div class="flex" style="justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <h3>Tracking Prevention</h3>
+                        <p>Block cross-site tracking.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="tracking-prevention-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <div class="flex" style="justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <h3>Do Not Track (DNT)</h3>
+                        <p>Send a "Do Not Track" signal to websites.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="dnt-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <div class="flex" style="justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <h3>HTTPS Only</h3>
+                        <p>Automatically upgrade connections to HTTPS.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="https-only-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Password & Security</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Password Manager</h4>
+                        <p>Save and manage your passwords securely</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="password-manager-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Warn About Dangerous Sites</h4>
+                        <p>Alert you about potentially malicious websites</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="dangerous-sites-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Clear Browsing Data</h3>
+                <p>Remove your browsing history, cookies, and cached files.</p>
+                <div class="setting-buttons">
+                    <button class="btn-danger" onclick="clearBrowsingData()">Clear Data</button>
+                </div>
+            </div>
         </section>
         <section id="downloads" class="setting-section">
             <h2>Downloads</h2>
-            <div class="card">Bluebird Browser will always ask you where to download content to.</div>
+            <div class="card">
+                <h3>Download Location</h3>
+                <p>Bluebird Browser will always ask you where to download content to.</p>
+            </div>
+            <div class="card">
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Warn Before Downloading Dangerous Files</h4>
+                        <p>Alert you when downloading potentially harmful files</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="warn-dangerous-download-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>File Type Handling</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Open PDFs in Browser</h4>
+                        <p>View PDF files directly instead of downloading</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="pdf-in-browser-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="info-box">
+                    <i class="material-symbols-rounded" style="vertical-align: middle; margin-right: 6px;">info</i>
+                    You can configure auto-opening for other file types
+                </div>
+            </div>
+            <div class="card">
+                <h3>Download History</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Save Downloads History</h4>
+                        <p>Keep track of your downloaded files</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="save-downloads-history-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button class="btn-secondary" style="margin-top: 12px; width: 100%;" onclick="clearDownloadHistory()">Clear Download History</button>
+            </div>
         </section>
         <section id="sitesettings" class="setting-section">
             <h2>Site Settings</h2>
+            <div class="card">
+                <h3>Permissions</h3>
+                <p>Control what permissions websites can request.</p>
+                <div style="margin-top: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span><i class="material-symbols-rounded">videocam</i> Camera</span>
+                        <select id="camera-perm" onchange="updateSetting('permissions.camera', this.value)" style="padding: 6px; border: 1px solid var(--scheme-5); border-radius: 6px; background: var(--scheme-3); color: var(--scheme-10); font-family: 'Poppins';">
+                            <option value="ask">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span><i class="material-symbols-rounded">mic</i> Microphone</span>
+                        <select id="microphone-perm" onchange="updateSetting('permissions.microphone', this.value)" style="padding: 6px; border: 1px solid var(--scheme-5); border-radius: 6px; background: var(--scheme-3); color: var(--scheme-10); font-family: 'Poppins';">
+                            <option value="ask">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span><i class="material-symbols-rounded">location_on</i> Location</span>
+                        <select id="location-perm" onchange="updateSetting('permissions.location', this.value)" style="padding: 6px; border: 1px solid var(--scheme-5); border-radius: 6px; background: var(--scheme-3); color: var(--scheme-10); font-family: 'Poppins';">
+                            <option value="ask">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span><i class="material-symbols-rounded">notifications</i> Notifications</span>
+                        <select id="notifications-perm" onchange="updateSetting('permissions.notifications', this.value)" style="padding: 6px; border: 1px solid var(--scheme-5); border-radius: 6px; background: var(--scheme-3); color: var(--scheme-10); font-family: 'Poppins';">
+                            <option value="ask">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="material-symbols-rounded">clipboard</i> Clipboard</span>
+                        <select id="clipboard-perm" onchange="updateSetting('permissions.clipboard', this.value)" style="padding: 6px; border: 1px solid var(--scheme-5); border-radius: 6px; background: var(--scheme-3); color: var(--scheme-10); font-family: 'Poppins';">
+                            <option value="ask">Ask</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Content & Media</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>JavaScript</h4>
+                        <p>Allow websites to run JavaScript code</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="javascript-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Autoplay Media</h4>
+                        <p>Allow websites to auto-play audio/video</p>
+                    </div>
+                    <select id="autoplay-perm" onchange="updateSetting('permissions.autoplay', this.value)" style="max-width: 150px;">
+                        <option value="allow">Allow</option>
+                        <option value="allow-muted">Allow (Muted Only)</option>
+                        <option value="block">Block</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Pop-ups</h4>
+                        <p>Allow websites to open pop-up windows</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="popups-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Device Access</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>USB Devices</h4>
+                        <p>Allow websites to access USB devices</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="usb-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Serial Ports</h4>
+                        <p>Allow websites to access serial ports</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="serial-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>MIDI Devices</h4>
+                        <p>Allow websites to access MIDI devices</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="midi-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Cookies</h3>
+                <p>Manage how websites use cookies.</p>
+                <div class="pill-buttons">
+                    <button class="pill-button" id="cookies-all-btn" onclick="updateCookiesSetting('all')">Allow All</button>
+                    <button class="pill-button" id="cookies-third-party-btn" onclick="updateCookiesSetting('third-party')">Block Third-Party</button>
+                    <button class="pill-button" id="cookies-all-block-btn" onclick="updateCookiesSetting('all-block')">Block All</button>
+                </div>
+            </div>
         </section>
         <section id="about" class="setting-section">
             <h2>About</h2>
+            <div class="card">
+                <h3>Bluebird Browser</h3>
+                <div style="margin-top: 12px;">
+                    <div style="margin-bottom: 16px;">
+                        <span style="color: var(--scheme-8); font-weight: 600;">Version</span>
+                        <p id="about-version" style="margin: 6px 0; font-size: 1.3rem; font-weight: 700;">2.0.0</p>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <span style="color: var(--scheme-8); font-weight: 600;">Last Updated</span>
+                        <p id="about-updated" style="margin: 6px 0;">June 11, 2026</p>
+                    </div>
+                    <div>
+                        <span style="color: var(--scheme-8); font-weight: 600;">Status</span>
+                        <p style="margin: 6px 0;"><span style="background: var(--scheme-7); padding: 6px 12px; border-radius: 20px; display: inline-block; color: var(--scheme-1); font-size: 0.85rem; font-weight: 600;">✓ Up to date</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Updates</h3>
+                <div class="setting-buttons">
+                    <button class="btn-primary" onclick="checkForUpdates()">Check for Updates</button>
+                </div>
+                <div class="info-box" style="margin-top: 12px;">
+                    <i class="material-symbols-rounded" style="vertical-align: middle; margin-right: 6px;">info</i>
+                    Your browser checks for updates automatically
+                </div>
+            </div>
+            <div class="card">
+                <h3>Release Notes & Help</h3>
+                <div class="setting-buttons">
+                    <button class="btn-secondary" onclick="openLink('https://github.com/bryantsandoval/bluebird-browser/releases')">View Release Notes</button>
+                    <button class="btn-secondary" onclick="openLink('https://github.com/bryantsandoval/bluebird-browser')">GitHub Repository</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Licenses</h3>
+                <p>View open source licenses used in Bluebird Browser.</p>
+                <button class="btn-secondary" style="width: 100%; margin-top: 12px;" onclick="viewLicenses()">View Licenses</button>
+            </div>
+            <div class="card" style="border-left: 4px solid #c94949;">
+                <h3>Reset Browser</h3>
+                <p>Restore all settings to their default values. This will not delete your bookmarks or history.</p>
+                <button class="btn-danger" style="width: 100%; margin-top: 12px;" onclick="resetBrowser()">Reset All Settings</button>
+            </div>
         </section>
         <section id="experimentalbeta" class="setting-section">
-            <h2>Experimental <span class="tag" style="background: var(--scheme-8);">BETA</span></h2>
+            <h2>Experimental <span class="tag">BETA</span></h2>
+            
+            <div class="info-box">
+                <i class="material-symbols-rounded" style="vertical-align: middle; margin-right: 6px;">warning</i>
+                <b>Warning:</b> These features are experimental and may be unstable. Use at your own risk.
+            </div>
+
+            <div class="card">
+                <h3>AI Features <span class="tag" style="background: var(--scheme-8);">NEW</span></h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>AI-Powered Search</h4>
+                        <p>Use AI to enhance search results and suggestions</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="ai-search-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Smart Tab Organization</h4>
+                        <p>Let AI automatically group and organize your tabs</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="ai-tab-org-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>UI Experiments</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Vertical Tabs</h4>
+                        <p>Display tabs vertically on the sidebar instead of horizontally</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="vertical-tabs-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Compact Mode</h4>
+                        <p>Reduce UI spacing for more screen real estate</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="compact-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Privacy Experiments</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Enhanced Cookie Isolation</h4>
+                        <p>Isolate cookies between websites for better privacy</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="cookie-isolation-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Fingerprint Protection</h4>
+                        <p>Resist browser fingerprinting techniques</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="fingerprint-protection-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Developer Features</h3>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Show Debug Info</h4>
+                        <p>Display debugging information in toolbar</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="debug-info-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
         </section>
     </main>
     <footer></footer>

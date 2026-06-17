@@ -1,13 +1,17 @@
 const isMac = navigator.platform.toLowerCase().includes('mac');
 
-document.addEventListener('DOMContentLoaded', () => {
-	if (loadSetting('theme')) {
-		Object.entries(loadSetting('theme')).forEach(([key, value]) => {
+document.addEventListener('DOMContentLoaded', async () => {
+	// Load and apply theme first
+	const theme = await loadSetting('theme');
+	if (theme) {
+		Object.entries(theme).forEach(([key, value]) => {
 			document.documentElement.style.setProperty(`--${key}`, value);
 		});
-		loadValues();
 	}
-	loadProfileSetting();
+	
+	// Then load all values
+	await loadValues();
+	await loadProfileSetting();
 })
 
 // ---------- IndexedDB helpers (fixed and robust) ----------
@@ -113,6 +117,7 @@ async function updateSetting(key, value) {
 		window.api.settings.save({ [key]: value }).catch(() => { });
 	}
 
+	console.log('Settings Saved.')
 	return key;
 }
 
@@ -236,6 +241,332 @@ async function loadValues() {
 		adblockToggle.checked = Boolean(enabled);
 		adblockToggle.addEventListener('change', (event) => {
 			updateSetting('adBlockEnabled', event.target.checked);
+		});
+	}
+
+	// Load General Settings
+	const startupOption = await loadSetting('startup') || 'homepage';
+	updateStartupUI(startupOption);
+
+	const homepage = await loadSetting('homepage') || '';
+	const homepageInput = document.getElementById('homepage-input');
+	if (homepageInput) {
+		homepageInput.value = homepage;
+	}
+
+	const searchEngine = await loadSetting('searchEngine') || 'google';
+	const searchEngineSelect = document.getElementById('search-engine');
+	if (searchEngineSelect) {
+		searchEngineSelect.value = searchEngine;
+		searchEngineSelect.addEventListener('change', (event) => {
+			saveSearchEngine();
+		});
+	}
+
+	// Autofill settings
+	const autofillAddresses = await loadSetting('autofillAddresses');
+	const autofillAddressesToggle = document.getElementById('autofill-addresses-toggle');
+	if (autofillAddressesToggle) {
+		autofillAddressesToggle.checked = Boolean(autofillAddresses);
+		autofillAddressesToggle.addEventListener('change', (event) => {
+			updateSetting('autofillAddresses', event.target.checked);
+		});
+	}
+
+	const autofillPayments = await loadSetting('autofillPayments');
+	const autofillPaymentsToggle = document.getElementById('autofill-payments-toggle');
+	if (autofillPaymentsToggle) {
+		autofillPaymentsToggle.checked = Boolean(autofillPayments);
+		autofillPaymentsToggle.addEventListener('change', (event) => {
+			updateSetting('autofillPayments', event.target.checked);
+		});
+	}
+
+	// Behavior settings
+	const smoothScrolling = await loadSetting('smoothScrolling');
+	const smoothScrollingToggle = document.getElementById('smooth-scrolling-toggle');
+	if (smoothScrollingToggle) {
+		smoothScrollingToggle.checked = Boolean(smoothScrolling);
+		smoothScrollingToggle.addEventListener('change', (event) => {
+			updateSetting('smoothScrolling', event.target.checked);
+		});
+	}
+
+	const restoreTabs = await loadSetting('restoreTabs');
+	const restoreTabsToggle = document.getElementById('restore-tabs-toggle');
+	if (restoreTabsToggle) {
+		restoreTabsToggle.checked = Boolean(restoreTabs);
+		restoreTabsToggle.addEventListener('change', (event) => {
+			updateSetting('restoreTabs', event.target.checked);
+		});
+	}
+
+	const language = await loadSetting('language') || 'en';
+	const languageSelect = document.getElementById('language-select');
+	if (languageSelect) {
+		languageSelect.value = language;
+		languageSelect.addEventListener('change', (event) => {
+			updateSetting('language', event.target.value);
+		});
+	}
+
+	// Performance Settings
+	const memorySaver = await loadSetting('memorySaver');
+	const memorySaverToggle = document.getElementById('memory-saver-toggle');
+	if (memorySaverToggle) {
+		memorySaverToggle.checked = Boolean(memorySaver);
+		memorySaverToggle.addEventListener('change', (event) => {
+			updateSetting('memorySaver', event.target.checked);
+		});
+	}
+
+	const hardwareAccel = await loadSetting('hardwareAcceleration');
+	const hardwareAccelToggle = document.getElementById('hardware-acceleration-toggle');
+	if (hardwareAccelToggle) {
+		hardwareAccelToggle.checked = Boolean(hardwareAccel);
+		hardwareAccelToggle.addEventListener('change', (event) => {
+			updateSetting('hardwareAcceleration', event.target.checked);
+		});
+	}
+
+	const tabThrottling = await loadSetting('backgroundTabThrottling');
+	const tabThrottlingToggle = document.getElementById('tab-throttling-toggle');
+	if (tabThrottlingToggle) {
+		tabThrottlingToggle.checked = Boolean(tabThrottling);
+		tabThrottlingToggle.addEventListener('change', (event) => {
+			updateSetting('backgroundTabThrottling', event.target.checked);
+		});
+	}
+
+	const preloadPages = await loadSetting('preloadPages');
+	const preloadPagesToggle = document.getElementById('preload-pages-toggle');
+	if (preloadPagesToggle) {
+		preloadPagesToggle.checked = Boolean(preloadPages);
+		preloadPagesToggle.addEventListener('change', (event) => {
+			updateSetting('preloadPages', event.target.checked);
+		});
+	}
+
+	const performanceAlerts = await loadSetting('performanceAlerts');
+	const performanceAlertsToggle = document.getElementById('performance-alerts-toggle');
+	if (performanceAlertsToggle) {
+		performanceAlertsToggle.checked = Boolean(performanceAlerts);
+		performanceAlertsToggle.addEventListener('change', (event) => {
+			updateSetting('performanceAlerts', event.target.checked);
+		});
+	}
+
+	// Privacy Settings
+	const trackingPrevention = await loadSetting('trackingPrevention');
+	const trackingPreventionToggle = document.getElementById('tracking-prevention-toggle');
+	if (trackingPreventionToggle) {
+		trackingPreventionToggle.checked = Boolean(trackingPrevention);
+		trackingPreventionToggle.addEventListener('change', (event) => {
+			updateSetting('trackingPrevention', event.target.checked);
+		});
+	}
+
+	const dnt = await loadSetting('doNotTrack');
+	const dntToggle = document.getElementById('dnt-toggle');
+	if (dntToggle) {
+		dntToggle.checked = Boolean(dnt);
+		dntToggle.addEventListener('change', (event) => {
+			updateSetting('doNotTrack', event.target.checked);
+		});
+	}
+
+	const httpsOnly = await loadSetting('httpsOnly');
+	const httpsOnlyToggle = document.getElementById('https-only-toggle');
+	if (httpsOnlyToggle) {
+		httpsOnlyToggle.checked = Boolean(httpsOnly);
+		httpsOnlyToggle.addEventListener('change', (event) => {
+			updateSetting('httpsOnly', event.target.checked);
+		});
+	}
+
+	const passwordManager = await loadSetting('passwordManager');
+	const passwordManagerToggle = document.getElementById('password-manager-toggle');
+	if (passwordManagerToggle) {
+		passwordManagerToggle.checked = Boolean(passwordManager);
+		passwordManagerToggle.addEventListener('change', (event) => {
+			updateSetting('passwordManager', event.target.checked);
+		});
+	}
+
+	const dangerousSites = await loadSetting('dangerousSitesWarning');
+	const dangerousSitesToggle = document.getElementById('dangerous-sites-toggle');
+	if (dangerousSitesToggle) {
+		dangerousSitesToggle.checked = Boolean(dangerousSites);
+		dangerousSitesToggle.addEventListener('change', (event) => {
+			updateSetting('dangerousSitesWarning', event.target.checked);
+		});
+	}
+
+	// Downloads Settings
+	const warnDangerousDownload = await loadSetting('warnDangerousDownload');
+	const warnDangerousDownloadToggle = document.getElementById('warn-dangerous-download-toggle');
+	if (warnDangerousDownloadToggle) {
+		warnDangerousDownloadToggle.checked = Boolean(warnDangerousDownload);
+		warnDangerousDownloadToggle.addEventListener('change', (event) => {
+			updateSetting('warnDangerousDownload', event.target.checked);
+		});
+	}
+
+	const pdfInBrowser = await loadSetting('openPDFInBrowser');
+	const pdfInBrowserToggle = document.getElementById('pdf-in-browser-toggle');
+	if (pdfInBrowserToggle) {
+		pdfInBrowserToggle.checked = Boolean(pdfInBrowser);
+		pdfInBrowserToggle.addEventListener('change', (event) => {
+			updateSetting('openPDFInBrowser', event.target.checked);
+		});
+	}
+
+	const saveDownloadsHistory = await loadSetting('saveDownloadsHistory');
+	const saveDownloadsHistoryToggle = document.getElementById('save-downloads-history-toggle');
+	if (saveDownloadsHistoryToggle) {
+		saveDownloadsHistoryToggle.checked = Boolean(saveDownloadsHistory);
+		saveDownloadsHistoryToggle.addEventListener('change', (event) => {
+			updateSetting('saveDownloadsHistory', event.target.checked);
+		});
+	}
+
+	// Site Settings - Permissions
+	const permissions = await loadSetting('permissions') || {};
+	const cameraPerm = document.getElementById('camera-perm');
+	if (cameraPerm) cameraPerm.value = permissions.camera || 'ask';
+
+	const microphonePerm = document.getElementById('microphone-perm');
+	if (microphonePerm) microphonePerm.value = permissions.microphone || 'ask';
+
+	const locationPerm = document.getElementById('location-perm');
+	if (locationPerm) locationPerm.value = permissions.location || 'ask';
+
+	const notificationsPerm = document.getElementById('notifications-perm');
+	if (notificationsPerm) notificationsPerm.value = permissions.notifications || 'ask';
+
+	const clipboardPerm = document.getElementById('clipboard-perm');
+	if (clipboardPerm) clipboardPerm.value = permissions.clipboard || 'ask';
+
+	// More permissions
+	const javascript = await loadSetting('permissions.javascript');
+	const javascriptToggle = document.getElementById('javascript-toggle');
+	if (javascriptToggle) {
+		javascriptToggle.checked = javascript !== false;
+		javascriptToggle.addEventListener('change', (event) => {
+			updateSetting('permissions.javascript', event.target.checked);
+		});
+	}
+
+	const autoplay = await loadSetting('permissions.autoplay') || 'allow';
+	const autoplaySelect = document.getElementById('autoplay-perm');
+	if (autoplaySelect) {
+		autoplaySelect.value = autoplay;
+		autoplaySelect.addEventListener('change', (event) => {
+			updateSetting('permissions.autoplay', event.target.value);
+		});
+	}
+
+	const popups = await loadSetting('permissions.popups');
+	const popupsToggle = document.getElementById('popups-toggle');
+	if (popupsToggle) {
+		popupsToggle.checked = Boolean(popups);
+		popupsToggle.addEventListener('change', (event) => {
+			updateSetting('permissions.popups', event.target.checked);
+		});
+	}
+
+	const usb = await loadSetting('permissions.usb');
+	const usbToggle = document.getElementById('usb-toggle');
+	if (usbToggle) {
+		usbToggle.checked = Boolean(usb);
+		usbToggle.addEventListener('change', (event) => {
+			updateSetting('permissions.usb', event.target.checked);
+		});
+	}
+
+	const serial = await loadSetting('permissions.serial');
+	const serialToggle = document.getElementById('serial-toggle');
+	if (serialToggle) {
+		serialToggle.checked = Boolean(serial);
+		serialToggle.addEventListener('change', (event) => {
+			updateSetting('permissions.serial', event.target.checked);
+		});
+	}
+
+	const midi = await loadSetting('permissions.midi');
+	const midiToggle = document.getElementById('midi-toggle');
+	if (midiToggle) {
+		midiToggle.checked = Boolean(midi);
+		midiToggle.addEventListener('change', (event) => {
+			updateSetting('permissions.midi', event.target.checked);
+		});
+	}
+
+	// Cookies setting
+	const cookiesSetting = await loadSetting('cookies.setting') || 'all';
+	updateCookiesUI(cookiesSetting);
+
+	// Experimental features
+	const aiSearch = await loadSetting('experimental.aiSearch');
+	const aiSearchToggle = document.getElementById('ai-search-toggle');
+	if (aiSearchToggle) {
+		aiSearchToggle.checked = Boolean(aiSearch);
+		aiSearchToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.aiSearch', event.target.checked);
+		});
+	}
+
+	const aiTabOrg = await loadSetting('experimental.aiTabOrganization');
+	const aiTabOrgToggle = document.getElementById('ai-tab-org-toggle');
+	if (aiTabOrgToggle) {
+		aiTabOrgToggle.checked = Boolean(aiTabOrg);
+		aiTabOrgToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.aiTabOrganization', event.target.checked);
+		});
+	}
+
+	const verticalTabs = await loadSetting('experimental.verticalTabs');
+	const verticalTabsToggle = document.getElementById('vertical-tabs-toggle');
+	if (verticalTabsToggle) {
+		verticalTabsToggle.checked = Boolean(verticalTabs);
+		verticalTabsToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.verticalTabs', event.target.checked);
+		});
+	}
+
+	const compactMode = await loadSetting('experimental.compactMode');
+	const compactModeToggle = document.getElementById('compact-mode-toggle');
+	if (compactModeToggle) {
+		compactModeToggle.checked = Boolean(compactMode);
+		compactModeToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.compactMode', event.target.checked);
+		});
+	}
+
+	const cookieIsolation = await loadSetting('experimental.cookieIsolation');
+	const cookieIsolationToggle = document.getElementById('cookie-isolation-toggle');
+	if (cookieIsolationToggle) {
+		cookieIsolationToggle.checked = Boolean(cookieIsolation);
+		cookieIsolationToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.cookieIsolation', event.target.checked);
+		});
+	}
+
+	const fingerprintProtection = await loadSetting('experimental.fingerprintProtection');
+	const fingerprintProtectionToggle = document.getElementById('fingerprint-protection-toggle');
+	if (fingerprintProtectionToggle) {
+		fingerprintProtectionToggle.checked = Boolean(fingerprintProtection);
+		fingerprintProtectionToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.fingerprintProtection', event.target.checked);
+		});
+	}
+
+	const debugInfo = await loadSetting('experimental.debugInfo');
+	const debugInfoToggle = document.getElementById('debug-info-toggle');
+	if (debugInfoToggle) {
+		debugInfoToggle.checked = Boolean(debugInfo);
+		debugInfoToggle.addEventListener('change', (event) => {
+			updateSetting('experimental.debugInfo', event.target.checked);
 		});
 	}
 }
@@ -443,6 +774,124 @@ function generateColorScale(baseHex) {
 	}
 
 	return scale;
+}
+
+// General Settings Functions
+function updateStartup(option) {
+	updateSetting('startup', option);
+	updateStartupUI(option);
+}
+
+function updateStartupUI(option) {
+	['homepage', 'last-session', 'new-tab'].forEach(opt => {
+		const btn = document.getElementById(`startup-${opt}-btn`);
+		if (btn) {
+			btn.classList.toggle('active', opt === option);
+		}
+	});
+}
+
+function saveHomepage() {
+	const input = document.getElementById('homepage-input');
+	if (input && input.value) {
+		updateSetting('homepage', input.value);
+		alert('Homepage saved!');
+	} else {
+		alert('Please enter a valid URL.');
+	}
+}
+
+function saveSearchEngine() {
+	const select = document.getElementById('search-engine');
+	if (select) {
+		updateSetting('searchEngine', select.value);
+		alert('Search engine updated!');
+	}
+}
+
+// Cookies Functions
+function updateCookiesSetting(setting) {
+	updateSetting('cookies.setting', setting);
+	updateCookiesUI(setting);
+}
+
+function updateCookiesUI(setting) {
+	['all', 'third-party', 'all-block'].forEach(opt => {
+		const btn = document.getElementById(`cookies-${opt}-btn`);
+		if (btn) {
+			btn.classList.toggle('active', opt === setting);
+		}
+	});
+}
+
+// Privacy Functions
+function clearBrowsingData() {
+	if (confirm('Are you sure? This will clear your history, cookies, and cached files.')) {
+		if (window.settingsAPI?.sendUpdate) {
+			window.settingsAPI.sendUpdate({
+				action: 'clear-browsing-data',
+				clearHistory: true,
+				clearCookies: true,
+				clearCache: true
+			});
+		} else if (window.api?.settings?.clearData) {
+			window.api.settings.clearData();
+		}
+		alert('Browsing data cleared!');
+	}
+}
+
+// Download Functions
+function clearDownloadHistory() {
+	if (confirm('Clear your download history?')) {
+		if (window.settingsAPI?.sendUpdate) {
+			window.settingsAPI.sendUpdate({
+				action: 'clear-download-history'
+			});
+		}
+		alert('Download history cleared!');
+	}
+}
+
+// About Functions
+function checkForUpdates() {
+	alert('Checking for updates...');
+	if (window.api?.updates?.check) {
+		window.api.updates.check();
+	}
+}
+
+function viewLicenses() {
+	if (window.electronAPI?.openExternal) {
+		window.electronAPI.openExternal('about:licenses');
+	} else {
+		alert('Licenses information not available');
+	}
+}
+
+function resetBrowser() {
+	if (confirm('This will reset all settings to their default values. Are you sure?\n\nBookmarks and history will NOT be deleted.')) {
+		if (window.settingsAPI?.sendUpdate) {
+			window.settingsAPI.sendUpdate({
+				action: 'reset-settings'
+			});
+		}
+		alert('Settings reset to defaults!');
+	}
+}
+
+// Site Settings Functions
+function updatePermission(permission, value) {
+	updateSetting(`permissions.${permission}`, value);
+}
+
+// Utility function
+function openLink(url) {
+	if (window.electronAPI?.openExternal) {
+		window.electronAPI.openExternal(url);
+	} else {
+		window.open(url, '_blank');
+	}
 }
 
 function toggleSidebar() {
