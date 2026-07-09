@@ -57,19 +57,6 @@ npm start
 
 This repository includes packaging support for macOS, Windows, and Linux.
 
-### Build commands
-
-- `npm run make:mac` — Build macOS package
-- `npm run make:win` — Build Windows package
-- `npm run make:linux` — Build Linux package
-- `npm run make:all` — Build all supported targets
-
-### Packaging notes
-
-- macOS: Uses `images/icon.icns` for the app icon.
-- Windows: Uses `images/icon.ico` for the app icon.
-- Linux: Uses `images/icon.png` for the app icon.
-
 ## Supported Platforms
 
 - **macOS** — Recommended for local builds with Homebrew.
@@ -106,7 +93,7 @@ You can find the app in the Releases tab. Just download the .zip (Mac) or .exe (
 
 ## Contributing
 
-Contributions are welcome! If you'd like to help, you can:
+Contributions are welcome, but limited! If you'd like to help, you can:
 
 - Open an issue for bugs or feature requests.
 - Submit a pull request with improvements.
