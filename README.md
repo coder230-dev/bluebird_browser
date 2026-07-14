@@ -12,37 +12,36 @@ Bluebird Browser is a lightweight, privacy-first web browser built with Electron
 - [Installation](#installation)
 - [Build & Packaging](#build--packaging)
 - [Supported Platforms](#supported-platforms)
-- [Downloading the Browser](#downloading-the-browser)
-- [Usage](#usage)
-- [Future Plans](#future-plans)
-- [Contributing](#contributing)
-- [Issues](#issues)
-- [License](#license)
+
+# Bluebird Browser
+
+![Browser Screenshot](images/coverImg.png)
+
+Bluebird Browser is a lightweight, privacy-first web browser built with Electron. It focuses on speed, simplicity, and customization while staying developer-friendly.
+
+## Table of contents
+
+- Features
+- Quick start
+- Build & packaging
+- Supported platforms
+- Usage
+- Contributing
+- License
 
 ## Features
 
-- **Tab Management**: Manage multiple tabs with a simple, intuitive interface.
-- **Customizable Themes**: Change the browser color from Settings and watch the UI update instantly.
-- **Privacy Focused**: Built with user privacy in mind and designed to reduce tracking and unwanted clutter.
-- **Lightweight UI**: A clean, modern design that stays easy to use for everyone.
-- **Ad Blocking (BETA)**: Basic ad blocking support to reduce distractions and speed up page loading.
+- Tab management with a simple UI
+- Customizable themes (live update)
+- Privacy-minded defaults and reduced tracking
+- Lightweight, modern interface
+- Basic ad blocking (BETA)
 
-## Preview
+## Quick start
 
-The screenshot above gives a quick look at the browser's interface and design.
+Prerequisites: Node.js (recommended v16+ or current LTS)
 
-## Built With
-
-- [Electron](https://www.electronjs.org/)
-- HTML, CSS, and JavaScript
-- [Electron Forge](https://www.electronforge.io/)
-- [Electron Builder](https://www.electron.build/)
-
-This project used AI to build its features, with it being accepted by me.
-
-## Installation
-
-To run the browser locally:
+Clone and run locally:
 
 ```bash
 git clone https://github.com/coder230-dev/bluebird_browser.git
@@ -51,73 +50,65 @@ npm install
 npm start
 ```
 
-> Make sure you have Node.js installed before running the commands above.
+This will start the app in development mode.
 
-## Build & Packaging
+## Build & packaging
 
-This repository includes packaging support for macOS, Windows, and Linux.
+The repo includes scripts to package the app for macOS, Windows, and Linux.
 
-### Build commands
+Common commands:
 
-- `npm run make:mac` — Build macOS package
-- `npm run make:win` — Build Windows package
-- `npm run make:linux` — Build Linux package
-- `npm run make:all` — Build all supported targets
+```bash
+npm run make      # macOS (simplified alias)
+npm run make:mac  # Build macOS package
+npm run make:win  # Build Windows package
+npm run make:linux# Build Linux package
+npm run make:all  # Build all targets
+```
 
-### Packaging notes
+Packaging notes:
 
-- macOS: Uses `images/icon.icns` for the app icon.
-- Windows: Uses `images/icon.ico` for the app icon.
-- Linux: Uses `images/icon.png` for the app icon.
+- macOS: expects `images/icon.icns` for the app icon
+- Windows: expects `images/icon.ico`
+- Linux: expects `images/icon.png`
 
-## Supported Platforms
+## Supported platforms
 
-- **macOS** — Recommended for local builds with Homebrew.
-- **Windows** — Best built directly on Windows.
-- **Linux** — Supported via standard packaging tools.
+- macOS — recommended for local builds
+- Windows — best built on Windows or CI
+- Linux — supported via standard packaging tools
 
-### Platform prerequisites
+Platform prerequisites (examples):
 
-- macOS:
-  - Optional: `brew install wine mono dpkg rpm`
-- Linux:
-  - Example: `sudo apt install fakeroot dpkg-dev rpm`
-- Windows:
-  - Use local Windows build environment or CI for best results.
-
-## Downloading the Browser
-
-You can find the app in the Releases tab. Just download the .zip (Mac) or .exe (Windows) file under the latest release.
+- macOS: `brew install wine mono dpkg rpm` (optional, for building Windows/Linux targets)
+- Linux: `sudo apt install fakeroot dpkg-dev rpm` (Debian/Ubuntu)
 
 ## Usage
 
-- Launch the application after building, or run `npm start` for development.
-- Open Settings to customize theme colors and available options.
-- Use the tab button to manage open pages and browsing sessions.
-
-## Future Plans
-
-- **Extension Support**: Add a plugin system for extensions such as password managers and productivity tools.
-- **Enhanced Security**: Add phishing protection, HTTPS enforcement, and optional VPN integration.
-- **Mobile App**: iOS first, followed by Android.
-- **AI-Powered Suggestions**: Provide smarter search results and browsing recommendations.
-- **Performance Improvements**: Reduce memory usage and optimize battery life.
-- **Ad Blocking Improvements**: Make ad blocking more robust and reliable.
+- Start in development: `npm start`
+- Open Settings to change theme and permissions
+- Tab controls available in the main UI for managing pages
 
 ## Contributing
 
-Contributions are welcome! If you'd like to help, you can:
+Contributions welcome:
 
-- Open an issue for bugs or feature requests.
-- Submit a pull request with improvements.
-- Help document features and workflows.
+- Open issues for bugs or feature requests
+- Submit pull requests for fixes and improvements
+- Keep changes focused and include clear descriptions
 
-Please follow any contribution guidelines in the repository and keep changes small and focused.
-
-## Issues
-
-If you encounter any issues, please report them in the repository's issue tracker. I will review them and work on fixes.
+If you'd like guidance on where to start, ask for a list of good first issues.
 
 ## License
 
-This project is currently unlicensed.
+This project currently has no license specified. Add a `LICENSE` file to set terms for reuse.
+
+---
+
+If you want, I can also:
+
+- Add a short development guide (project structure and key files)
+- Create a `CONTRIBUTING.md` and `LICENSE` file
+- Add badges and release links
+
+Tell me which of those you'd like next.
