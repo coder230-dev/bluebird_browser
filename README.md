@@ -54,23 +54,20 @@ This will start the app in development mode.
 
 ## Build & packaging
 
-The repo includes scripts to package the app for macOS, Windows, and Linux.
+This repository includes packaging support for macOS, Windows, and Linux.
 
-Common commands:
+### Build commands
 
-```bash
-npm run make      # macOS (simplified alias)
-npm run make:mac  # Build macOS package
-npm run make:win  # Build Windows package
-npm run make:linux# Build Linux package
-npm run make:all  # Build all targets
-```
+- `npm run make:mac` — Build macOS package
+- `npm run make:win` — Build Windows package
+- `npm run make:linux` — Build Linux package
+- `npm run make:all` — Build all supported targets
 
-Packaging notes:
+### Packaging notes
 
-- macOS: expects `images/icon.icns` for the app icon
-- Windows: expects `images/icon.ico`
-- Linux: expects `images/icon.png`
+- macOS: Uses `images/icon.icns` for the app icon.
+- Windows: Uses `images/icon.ico` for the app icon.
+- Linux: Uses `images/icon.png` for the app icon.
 
 ## Supported platforms
 
@@ -91,7 +88,7 @@ Platform prerequisites (examples):
 
 ## Contributing
 
-Contributions welcome:
+Contributions are welcome! If you'd like to help, you can:
 
 - Open issues for bugs or feature requests
 - Submit pull requests for fixes and improvements
