@@ -13,22 +13,6 @@ Bluebird Browser is a lightweight, privacy-first web browser built with Electron
 - [Build & Packaging](#build--packaging)
 - [Supported Platforms](#supported-platforms)
 
-# Bluebird Browser
-
-![Browser Screenshot](images/coverImg.png)
-
-Bluebird Browser is a lightweight, privacy-first web browser built with Electron. It focuses on speed, simplicity, and customization while staying developer-friendly.
-
-## Table of contents
-
-- Features
-- Quick start
-- Build & packaging
-- Supported platforms
-- Usage
-- Contributing
-- License
-
 ## Features
 
 - Tab management with a simple UI
