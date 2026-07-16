@@ -20,26 +20,30 @@
 <body>
 	<div id="notification"></div>
 	<header class="titlebar" id="titlebar">
-		<div id="top-part">
-			<div id="tabs" class="tabs">
-				<button title="New Tab" id="new-tab" class="new-tab">+</button>
-			</div>
-			<button id="update-btn" class="hidden" title="App update available">
-				<i class="material-symbols-rounded">system_update</i>
-				<span class="update-badge"></span>
-			</button>
-			<!-- <button id="top-right-btn"><i class="material-symbols-rounded">tabs</i> Tabs</button> -->
-		</div>
 		<div class="toolbar">
-			<button title="Back" id="back">
-				<i class="material-symbols-rounded">arrow_back</i>
-			</button>
-			<button title="Forward" id="forward">
-				<i class="material-symbols-rounded">arrow_forward</i>
-			</button>
-			<button title="Reload" id="reload">
-				<i class="material-symbols-rounded">refresh</i>
-			</button>
+			<div class="toolbar-section" style="outline: none; gap: 8px;">
+				<div class="toolbar-section">
+					<button title="Back" id="back">
+						<i class="material-symbols-rounded">arrow_back</i>
+					</button>
+					<button title="Forward" id="forward">
+						<i class="material-symbols-rounded">arrow_forward</i>
+					</button>
+					<button title="Reload" id="reload">
+						<i class="material-symbols-rounded">refresh</i>
+					</button>
+				</div>
+				<div class="toolbar-section" style=" padding: 0;">
+					<div id="tabs-btn">
+						<button class="tab-btn" id="tab-btn">
+							<i class="material-symbols-rounded">select_window_2</i>
+						</button>
+						<button id="tabs-more-btn">
+							<i class="material-symbols-rounded">arrow_drop_down</i>
+						</button>
+					</div>
+				</div>
+			</div>
 			<div class="search-container" id="search-container">
 				<button id="viewWebsiteInfo" title="View Website Information">
 					<i class="material-symbols-rounded">page_info</i></button>
@@ -54,41 +58,38 @@
 				<div id="suggestions" class="suggestions"></div>
 				<div id="right-info"></div>
 			</div>
-			<button id="bookmark-manager" class="hbD">
-				<i title="Bookmark Manager" class="material-symbols-rounded">bookmark</i>
-			</button>
-			<button id="btnHistory" class="hbD">
-				<i title="History Manager" class="material-symbols-rounded">history</i>
-			</button>
-			<button id="btnDownloads" class="hbD">
-				<i title="Downloads Manager" class="material-symbols-rounded">download</i>
-			</button>
-			<button id="btnFind" class="hbD">
-				<i title="Find" class="material-symbols-rounded">find_in_page</i>
-			</button>
-			<button id="btnPrint" class="hbD">
-				<i title="Print" class="material-symbols-rounded">print</i>
-			</button>
-			<button id="btnShare" class="hbD">
-				<i title="Share" class="material-symbols-rounded">share</i>
-			</button>
-			<button id="btnPrivacy" class="hbD">
-				<i title="Privacy" class="material-symbols-rounded">privacy_tip</i>
-			</button>
+			<div class="toolbar-section">
+				<button id="bookmark-manager" class="hbD">
+					<i title="Bookmark Manager" class="material-symbols-rounded">bookmark</i>
+				</button>
+				<button id="btnHistory" class="hbD">
+					<i title="History Manager" class="material-symbols-rounded">history</i>
+				</button>
+				<button id="btnDownloads" class="hbD">
+					<i title="Downloads Manager" class="material-symbols-rounded">download</i>
+				</button>
+			</div>
 			<button id="btnDevTools" class="hbD">
 				<i title="Developer Tools" class="material-symbols-rounded">code</i>
 			</button>
-			<button id="btnSettings" class="hbD">
-				<i title="Settings" class="material-symbols-rounded">settings</i>
+			<div style="justify-content: right;" class="toolbar-section">
+				<button title="New Tab" id="new-tab" class="new-tab">
+					<i class="material-symbols-rounded">add</i>
+				</button>
+				<button id="aiBtn" class="hbD">
+					<i title="Use AI" class="material-symbols-rounded">robot_2</i>
+				</button>
+				<button id="profile-info"></button>
+				<button id="more-btn" style="z-index: 1000;"><i class="material-symbols-rounded">more_vert</i></button>
+			</div>
+		</div>
+		<div id="tab-bar">
+			<div id="tabs" class="tabs">
+			</div>
+			<button id="update-btn" class="hidden" title="App update available">
+				<i class="material-symbols-rounded">system_update</i>
+				<span class="update-badge"></span>
 			</button>
-			<button id="profile-info"></button>
-			<button id="aiBtn" class="hbD">
-				<i title="Use AI" class="material-symbols-rounded">robot_2</i>
-			</button>
-			<button id="btnBattery" class="hbD">
-				<i title="Settings" class="material-symbols-rounded">battery_android_frame_6</i>
-			</button>
-			<button id="more-btn" style="z-index: 1000;"><i class="material-symbols-rounded">more_vert</i></button>
 		</div>
 	</header>
 	<div id="main-for-view">

@@ -84,7 +84,7 @@ body {
 	max-height: 100vh;
 	margin: 0;
 	font-family: system-ui, sans-serif;
-	background: var(--scheme-1);
+	background: color-mix(in srgb, var(--scheme-1) 30%, transparent);
 	color: var(--scheme-10);
 	display: grid;
 	grid-template-areas: "titlebar" "main";
@@ -132,23 +132,17 @@ body.on-mac {
 	.context-menu {
 		transition: 0s;
 	}
-
-	#top-part.on-mac {
-		padding-right: 0px;
-		padding-left: 80px;
-		transition: none;
-	}
-}
-
-body #top-part.on-mac {
-	padding-right: 0px;
-	padding-left: 0px;
-	transition: none;
 }
 
 #profile-info {
 	display: flex;
 	align-items: center;
+
+	.active-profile-displayed {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
 
 	i {
 		color: var(--scheme-10);
@@ -184,15 +178,13 @@ input {
 }
 
 
-
-#top-part {
+#tab-bar {
 	display: grid;
 	grid-template-columns: 1fr auto;
 	align-items: center;
 	position: relative;
 	overflow: hidden;
 	transition: 0.4s cubic-bezier(0.075, 0.82, 0.165, 1);
-	padding-right: 110px;
 }
 
 #main-for-view {
@@ -227,7 +219,7 @@ input {
 
 	transform: translate(-50%, -40px);
 	opacity: 0;
-	z-index: -1;
+	z-index: 1;
 
 	&>i {
 		font-size: 1.2rem;
@@ -258,7 +250,7 @@ input {
 #notification.open {
 	opacity: 1;
 	transform: translateX(-50%) translateY(0);
-	z-index: 100;
+	z-index: 2;
 }
 
 .drag-handle {
@@ -362,19 +354,19 @@ input {
 	position: relative;
 }
 
-
 .search-container {
 	position: relative;
 	width: 100%;
+	max-width: 1000px;
 	display: flex;
 	background: var(--scheme-2);
-	width: 100%;
-	border-radius: 15px;
-	z-index: 2;
+	z-index: 1000;
+	isolation: isolate;
 	min-width: none;
 	border: 1px solid transparent;
 	align-items: center;
-	padding: 0 6px;
+	padding: 0;
+	border-radius: 18px;
 
 	button {
 		border-radius: 90px;
@@ -395,6 +387,7 @@ input {
 
 .search-container button {
 	background: var(--scheme-8);
+	margin: 1px;
 }
 
 .search-container button::before {
@@ -403,7 +396,11 @@ input {
 }
 
 .search-container:has(input:focus) {
-	border: 1px solid var(--scheme-8);
+	outline: 1px solid var(--scheme-10);
+
+	input {
+		text-align: left;
+	}
 }
 
 #search-container:has(.suggestions.show) {
@@ -430,13 +427,15 @@ input {
 }
 
 .titlebar {
-	background: var(--bg);
-	border-bottom: 1px solid var(--border);
 	flex: 0 0 auto;
 	-webkit-app-region: drag;
 	display: flex;
 	flex-direction: column;
 	grid-area: titlebar;
+	position: relative;
+	z-index: 1000;
+	isolation: isolate;
+	backdrop-filter: blur(20px);
 
 	* {
 		overflow: hidden;
@@ -445,10 +444,63 @@ input {
 
 .toolbar {
 	display: flex;
-	gap: 8px;
-	padding: 5px 8px;
+	justify-content: space-between;
+	align-items: center;
+	gap: 3px;
+	padding: 7px 4px 4px 4px;
+	background: var(--scheme-1);
+	padding-left: 85px;
+
+	* {
+		-webkit-app-region: no-drag;
+	}
+}
+
+.toolbar-section {
+	display: flex;
+	gap: 3px;
+	align-items: center;
+	min-width: fit-content;
 	-webkit-app-region: no-drag;
-	background: var(--scheme-3);
+
+	/* Apply styling when ANY normal button exists */
+	&:has(button:not(.hbD)) {
+		padding: 1px 6px;
+		outline: 1px solid color-mix(in srgb, var(--scheme-9) 30%, transparent);
+		border-radius: 30px;
+	}
+
+	/* Reset styling when ALL buttons are .hbD */
+	&:not(:has(button:not(.hbD))) {
+		padding: 0;
+		outline: none;
+	}
+
+	button i {
+		font-size: 1.3rem;
+	}
+}
+
+#tabs-btn {
+	display: flex;
+
+	button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	button.tab-btn {
+		width: 45px;
+		border-radius: 30px 8px 8px 30px;
+	}
+
+	button#tabs-more-btn {
+		border-radius: 8px 30px 30px 8px;
+		min-width: 0px;
+		width: 25px;
+		padding: 0;
+	}
 }
 
 .sep {
@@ -538,7 +590,7 @@ input {
 	overflow: hidden;
 	user-select: none;
 	color: var(--scheme-10);
-	z-index: 7;
+	z-index: 5;
 	font-family: "Montserrat";
 	gap: 4px;
 
@@ -558,23 +610,8 @@ input {
 }
 
 .toolbar button:hover {
-	color: var(--scheme-10);
-}
-
-.toolbar button::before,
-#bookmarks-bar button::before,
-.closeBtnR::before,
-.tab-on-overflow-menu span button::before {
-	content: "";
 	background: var(--scheme-2);
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	top: 0;
-	left: 0;
-	opacity: 0;
-	transition: 0.1s cubic-bezier(0.075, 0.82, 0.165, 1);
-	z-index: -1;
+	color: var(--scheme-10) !important;
 }
 
 .toolbar button:hover::before,
@@ -607,22 +644,6 @@ input {
 .toolbar input:focus {
 	padding: 6px 10px;
 	outline: none;
-}
-
-.tabs {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	gap: 3px;
-	padding: 4px;
-	overflow-x: auto;
-	overflow-y: hidden;
-	white-space: wrap;
-	scroll-snap-type: x mandatory;
-	scroll-behavior: smooth;
-	-webkit-overflow-scrolling: touch;
-	max-width: calc(100% - 50px);
-	align-items: center;
 }
 
 #backdrop-for-pop {
@@ -660,13 +681,14 @@ input {
 				padding: 8px 15px;
 				border-radius: 25px;
 			}
+
 		}
 
 		nav {
 			position: sticky;
 			top: 0;
 			left: 0;
-			z-index: 2;
+			z-index: 7;
 		}
 
 		.closeBtn {
@@ -690,6 +712,11 @@ input {
 
 		.closeBtn:hover {
 			background: var(--scheme-2);
+		}
+
+		&.open {
+			opacity: 1;
+			transform: none;
 		}
 	}
 
@@ -726,18 +753,32 @@ input {
 	}
 }
 
-.tab {
-	flex: 1 1 auto;
+.tabs {
+	flex: 1;
 	min-width: 0;
-	max-width: 300px;
+	display: flex;
+	gap: 3px;
+	padding: 4px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	white-space: wrap;
+	scroll-snap-type: x mandatory;
+	scroll-behavior: smooth;
+	-webkit-overflow-scrolling: touch;
+	align-items: center;
+}
+
+.tab {
+	width: 100%;
 
 	/* Visual */
 	color: var(--scheme-10);
-	padding: 7px 26px 7px 7px;
+	padding: 5px 26px 5px 5px;
 	margin: 1px 0 1px 0;
 	border-radius: 1em;
 	display: flex;
 	gap: 5px;
+	justify-content: center;
 	align-items: center;
 	position: relative;
 	overflow: hidden;
@@ -748,6 +789,10 @@ input {
 	transition: 0s;
 	background: transparent;
 	border: none;
+
+	.close-tab-btn {
+		font-size: 18px;
+	}
 
 	.load,
 	i {
@@ -822,7 +867,7 @@ input {
 }
 
 .tab.active {
-	background: var(--scheme-3);
+	background: light-dark(var(--scheme-3), color-mix(in srgb, var(--scheme-3), var(--scheme-1)));
 	border-radius: 1em;
 	box-shadow: 0px 3px color-mix(in srgb, var(--scheme-7) 10%, transparent);
 }
@@ -902,7 +947,7 @@ input {
 	opacity: 0.7;
 	box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 	transition: none;
-	z-index: 1000;
+	z-index: 10;
 }
 
 .hiddenActiveTab {
@@ -938,29 +983,9 @@ input {
 	min-width: fit-content;
 }
 
-.new-tab {
-	border: none;
-	color: var(--scheme-10);
-	background: none;
-	font-size: 18px;
-	padding: 0 9px;
-	font-size: 1rem;
-	border-radius: 50%;
-	cursor: pointer;
-	-webkit-app-region: no-drag;
-	width: fit-content;
-	height: fit-content;
-	aspect-ratio: 1/1;
-	margin-left: 4px;
-	flex-shrink: 0;
-}
-
-.new-tab:hover {
-	background: var(--scheme-3);
-}
-
 #views {
 	position: relative;
+	z-index: 8;
 	flex: 1 1 auto;
 	display: flex;
 	min-height: 0;
@@ -1105,19 +1130,21 @@ webview {
 }
 
 #suggestions {
-	position: absolute;
+	position: fixed;
 	width: 100%;
 	left: 0;
 	background: var(--scheme-1);
 	border: 1px solid var(--scheme-9);
 	border-radius: 0 0 20px 20px;
-	max-height: 70%;
+	max-height: 70vh;
 	overflow-y: auto;
 	display: none;
-	z-index: 1000;
+	z-index: 10000;
+	pointer-events: auto;
 	font-size: 0.8rem;
 	/* box-shadow: 0 8px 30px rgba(var(--shadow), 0.6); */
 	padding: 8px;
+	height: auto;
 }
 
 .suggestion {
@@ -1191,9 +1218,10 @@ webview {
 	padding: 12px;
 	border-radius: 22px;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-	z-index: 1000;
+	z-index: 11;
 	display: none;
-	width: 300px;
+	width: 100%;
+	max-width: 400px;
 	transition: 0.3s cubic-bezier(0.075, 0.82, 0.165, 1);
 	opacity: 0;
 
@@ -1451,11 +1479,38 @@ webview {
 	background: var(--scheme-5);
 }
 
+.context-menu-item:has(.over-nav),
+.context-menu-item:has(.overview-acc-cont) {
+	padding: 2px !important;
+	display: block !important;
+
+	&:hover {
+		background: transparent !important;
+	}
+}
+
+.over-nav {
+	font-weight: 600;
+	font-family: "Special Gothic Expanded One";
+	display: block;
+	text-align: center;
+	background: var(--scheme-2);
+	border-radius: 10px 10px 0 0;
+	padding: 6px 0;
+}
+
+.overview-acc-cont {
+	height: 150px;
+	width: 250px;
+	background: var(--scheme-2);
+	border-radius: 0 0 10px 10px;
+}
+
 .context-menu,
 .context-submenu,
 .popup {
 	position: absolute;
-	z-index: 1000;
+	z-index: 18;
 	min-width: 200px;
 	overflow: scroll !important;
 	opacity: 0;
@@ -1464,27 +1519,23 @@ webview {
 	transition: 0.2s cubic-bezier(0.075, 0.82, 0.165, 1) !important;
 	max-height: calc(100% - 40px) !important;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+	-webkit-app-region: no-drag;
 
-	padding: 5px 2px;
-	background: color-mix(in srgb, var(--scheme-2) 75%, transparent);
+	padding: 12px 5px;
+	background: color-mix(in srgb, var(--scheme-1) 60%, transparent);
 	backdrop-filter: blur(10px);
-	border-radius: 30px;
+	border-radius: 22px;
 	outline: 1px solid color-mix(in srgb, var(--scheme-8) 50%, transparent);
 	border: none;
 }
 
-.context-menu,
-.context-submenu {
-	animation: openContextMenu 230ms cubic-bezier(0.075, 0.82, 0.165, 1) forwards;
-}
-
 .context-submenu {
 	opacity: 0;
-	z-index: -1;
+	z-index: 12;
 }
 
 .context-submenu.open {
-	z-index: 100;
+	z-index: 13;
 }
 
 
@@ -1513,8 +1564,7 @@ webview {
 /* Items inside context menus */
 .context-menu .context-menu-item,
 .context-submenu .context-menu-item {
-	padding: 8px;
-	border-radius: 20px;
+	border-radius: 12px;
 }
 
 .context-menu .context-menu-item i,
@@ -1556,7 +1606,7 @@ webview {
 .context-submenu {
 	transition: 0.05s !important;
 	transform: blur(20px) !important;
-	z-index: 1001;
+	z-index: 14;
 	position: absolute;
 	animation: none !important;
 	top: -100%;
@@ -1594,7 +1644,7 @@ webview {
 	border: 1px solid var(--scheme-5);
 	color: var(--scheme-10);
 	opacity: 0;
-	z-index: 1000;
+	z-index: 15;
 	transition: opacity 0s ease;
 	pointer-events: none;
 	margin: 0;
@@ -1631,7 +1681,7 @@ webview {
 	height: 100%;
 	transition: 0.4s cubic-bezier(0.075, 0.82, 0.165, 1);
 	background: var(--scheme-10);
-	z-index: 2;
+	z-index: 16;
 	opacity: 0.3;
 	border-radius: 90px;
 	pointer-events: visibleStroke;
@@ -1639,7 +1689,7 @@ webview {
 
 .context-menu-item:active::before {
 	transform: scale(1);
-	z-index: 0;
+	z-index: 17;
 	border-radius: 10px;
 	cursor: pointer;
 }
@@ -1781,6 +1831,19 @@ circle {
 
 @media screen and (max-width: 700px) {
 	#profile-info span:not(#profile-info-pfp) {
+		display: none;
+	}
+
+	.toolbar-section:has(> #tabs-btn) {
+		display: none;
+	}
+
+	#searchModeOpt {
+		display: none !important;
+		visibility: none;
+	}
+
+	#tabs-btn {
 		display: none;
 	}
 }

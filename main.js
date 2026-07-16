@@ -440,102 +440,102 @@ function buildContextMenu(params, wc) {
 	}
 
 	// ─────────────────────────────────────────────
-	// VIDEO ACTIONS
+	// VIDEO ACTIONS (Not Ready)
 	// ─────────────────────────────────────────────
-	if (params.mediaType === "video" && params.srcURL) {
-		template.push(
-			{ label: "Play/Pause", click: () => sendAction("togglePlay") },
-			{ label: "Mute/Unmute", click: () => sendAction("toggleMute") },
-			{ label: "Loop", click: () => sendAction("toggleLoop") },
-			{ label: "Picture-in-Picture", click: () => sendAction("togglePiP") },
-			{ label: "Fullscreen", click: () => sendAction("toggleVideoFullscreen") },
-			{ type: "separator" },
-			{ label: "Copy Video URL", click: () => clipboard.writeText(params.srcURL) },
-			{ label: "Open Video in New Tab", click: () => sendAction("openInNew", { url: params.srcURL }) },
-			{ label: "Open Video in Sidebar", click: () => sendAction("openSidebarApp", { url: params.srcURL }) },
-			{ type: "separator" },
-			{
-				label: "Download Video As…",
-				click: async () => {
-					const { filePath } = await dialog.showSaveDialog({
-						title: "Save Video As",
-						defaultPath: "video.mp4",
-						filters: [{ name: "Videos", extensions: ["mp4", "webm", "avi", "mkv"] }]
-					});
-					if (!filePath) return;
-					const buffer = Buffer.from(await fetch(params.srcURL).then(r => r.arrayBuffer()));
-					fs.writeFileSync(filePath, buffer);
-				}
-			},
-			{ type: "separator" },
-			{
-				label: "Playback Speed",
-				submenu: [
-					{ label: "0.25x", click: () => sendAction("setPlaybackRate", { rate: 0.25 }) },
-					{ label: "0.5x", click: () => sendAction("setPlaybackRate", { rate: 0.5 }) },
-					{ label: "0.75x", click: () => sendAction("setPlaybackRate", { rate: 0.75 }) },
-					{ label: "1x (Normal)", click: () => sendAction("setPlaybackRate", { rate: 1 }) },
-					{ label: "1.25x", click: () => sendAction("setPlaybackRate", { rate: 1.25 }) },
-					{ label: "1.5x", click: () => sendAction("setPlaybackRate", { rate: 1.5 }) },
-					{ label: "2x", click: () => sendAction("setPlaybackRate", { rate: 2 }) }
-				]
-			},
-			{ type: "separator" },
-			{ label: "Seek Backward 10s", click: () => sendAction("seekBackward", { seconds: 10 }) },
-			{ label: "Seek Forward 10s", click: () => sendAction("seekForward", { seconds: 10 }) },
-			{ label: "Seek Backward 30s", click: () => sendAction("seekBackward", { seconds: 30 }) },
-			{ label: "Seek Forward 30s", click: () => sendAction("seekForward", { seconds: 30 }) },
-			{ type: "separator" }
-		);
-	}
+	// if (params.mediaType === "video" && params.srcURL) {
+	// 	template.push(
+	// 		{ label: "Play/Pause", click: () => sendAction("togglePlay") },
+	// 		{ label: "Mute/Unmute", click: () => sendAction("toggleMute") },
+	// 		{ label: "Loop", click: () => sendAction("toggleLoop") },
+	// 		{ label: "Picture-in-Picture", click: () => sendAction("togglePiP") },
+	// 		{ label: "Fullscreen", click: () => sendAction("toggleVideoFullscreen") },
+	// 		{ type: "separator" },
+	// 		{ label: "Copy Video URL", click: () => clipboard.writeText(params.srcURL) },
+	// 		{ label: "Open Video in New Tab", click: () => sendAction("openInNew", { url: params.srcURL }) },
+	// 		{ label: "Open Video in Sidebar", click: () => sendAction("openSidebarApp", { url: params.srcURL }) },
+	// 		{ type: "separator" },
+	// 		{
+	// 			label: "Download Video As…",
+	// 			click: async () => {
+	// 				const { filePath } = await dialog.showSaveDialog({
+	// 					title: "Save Video As",
+	// 					defaultPath: "video.mp4",
+	// 					filters: [{ name: "Videos", extensions: ["mp4", "webm", "avi", "mkv"] }]
+	// 				});
+	// 				if (!filePath) return;
+	// 				const buffer = Buffer.from(await fetch(params.srcURL).then(r => r.arrayBuffer()));
+	// 				fs.writeFileSync(filePath, buffer);
+	// 			}
+	// 		},
+	// 		{ type: "separator" },
+	// 		{
+	// 			label: "Playback Speed",
+	// 			submenu: [
+	// 				{ label: "0.25x", click: () => sendAction("setPlaybackRate", { rate: 0.25 }) },
+	// 				{ label: "0.5x", click: () => sendAction("setPlaybackRate", { rate: 0.5 }) },
+	// 				{ label: "0.75x", click: () => sendAction("setPlaybackRate", { rate: 0.75 }) },
+	// 				{ label: "1x (Normal)", click: () => sendAction("setPlaybackRate", { rate: 1 }) },
+	// 				{ label: "1.25x", click: () => sendAction("setPlaybackRate", { rate: 1.25 }) },
+	// 				{ label: "1.5x", click: () => sendAction("setPlaybackRate", { rate: 1.5 }) },
+	// 				{ label: "2x", click: () => sendAction("setPlaybackRate", { rate: 2 }) }
+	// 			]
+	// 		},
+	// 		{ type: "separator" },
+	// 		{ label: "Seek Backward 10s", click: () => sendAction("seekBackward", { seconds: 10 }) },
+	// 		{ label: "Seek Forward 10s", click: () => sendAction("seekForward", { seconds: 10 }) },
+	// 		{ label: "Seek Backward 30s", click: () => sendAction("seekBackward", { seconds: 30 }) },
+	// 		{ label: "Seek Forward 30s", click: () => sendAction("seekForward", { seconds: 30 }) },
+	// 		{ type: "separator" }
+	// 	);
+	// }
 
-	// ─────────────────────────────────────────────
-	// AUDIO ACTIONS
-	// ─────────────────────────────────────────────
-	if (params.mediaType === "audio" && params.srcURL) {
-		template.push(
-			{ label: "Play/Pause", click: () => sendAction("togglePlay") },
-			{ label: "Mute/Unmute", click: () => sendAction("toggleMute") },
-			{ label: "Loop", click: () => sendAction("toggleLoop") },
-			{ type: "separator" },
-			{ label: "Copy Audio URL", click: () => clipboard.writeText(params.srcURL) },
-			{ label: "Open Audio in New Tab", click: () => sendAction("openInNew", { url: params.srcURL }) },
-			{ label: "Open Audio in Sidebar", click: () => sendAction("openSidebarApp", { url: params.srcURL }) },
-			{ type: "separator" },
-			{
-				label: "Download Audio As…",
-				click: async () => {
-					const { filePath } = await dialog.showSaveDialog({
-						title: "Save Audio As",
-						defaultPath: "audio.mp3",
-						filters: [{ name: "Audio", extensions: ["mp3", "wav", "ogg", "m4a"] }]
-					});
-					if (!filePath) return;
-					const buffer = Buffer.from(await fetch(params.srcURL).then(r => r.arrayBuffer()));
-					fs.writeFileSync(filePath, buffer);
-				}
-			},
-			{ type: "separator" },
-			{
-				label: "Playback Speed",
-				submenu: [
-					{ label: "0.25x", click: () => sendAction("setPlaybackRate", { rate: 0.25 }) },
-					{ label: "0.5x", click: () => sendAction("setPlaybackRate", { rate: 0.5 }) },
-					{ label: "0.75x", click: () => sendAction("setPlaybackRate", { rate: 0.75 }) },
-					{ label: "1x (Normal)", click: () => sendAction("setPlaybackRate", { rate: 1 }) },
-					{ label: "1.25x", click: () => sendAction("setPlaybackRate", { rate: 1.25 }) },
-					{ label: "1.5x", click: () => sendAction("setPlaybackRate", { rate: 1.5 }) },
-					{ label: "2x", click: () => sendAction("setPlaybackRate", { rate: 2 }) }
-				]
-			},
-			{ type: "separator" },
-			{ label: "Seek Backward 10s", click: () => sendAction("seekBackward", { seconds: 10 }) },
-			{ label: "Seek Forward 10s", click: () => sendAction("seekForward", { seconds: 10 }) },
-			{ label: "Seek Backward 30s", click: () => sendAction("seekBackward", { seconds: 30 }) },
-			{ label: "Seek Forward 30s", click: () => sendAction("seekForward", { seconds: 30 }) },
-			{ type: "separator" }
-		);
-	}
+	// // ─────────────────────────────────────────────
+	// // AUDIO ACTIONS (Not Ready)
+	// // ─────────────────────────────────────────────
+	// if (params.mediaType === "audio" && params.srcURL) {
+	// 	template.push(
+	// 		{ label: "Play/Pause", click: () => sendAction("togglePlay") },
+	// 		{ label: "Mute/Unmute", click: () => sendAction("toggleMute") },
+	// 		{ label: "Loop", click: () => sendAction("toggleLoop") },
+	// 		{ type: "separator" },
+	// 		{ label: "Copy Audio URL", click: () => clipboard.writeText(params.srcURL) },
+	// 		{ label: "Open Audio in New Tab", click: () => sendAction("openInNew", { url: params.srcURL }) },
+	// 		{ label: "Open Audio in Sidebar", click: () => sendAction("openSidebarApp", { url: params.srcURL }) },
+	// 		{ type: "separator" },
+	// 		{
+	// 			label: "Download Audio As…",
+	// 			click: async () => {
+	// 				const { filePath } = await dialog.showSaveDialog({
+	// 					title: "Save Audio As",
+	// 					defaultPath: "audio.mp3",
+	// 					filters: [{ name: "Audio", extensions: ["mp3", "wav", "ogg", "m4a"] }]
+	// 				});
+	// 				if (!filePath) return;
+	// 				const buffer = Buffer.from(await fetch(params.srcURL).then(r => r.arrayBuffer()));
+	// 				fs.writeFileSync(filePath, buffer);
+	// 			}
+	// 		},
+	// 		{ type: "separator" },
+	// 		{
+	// 			label: "Playback Speed",
+	// 			submenu: [
+	// 				{ label: "0.25x", click: () => sendAction("setPlaybackRate", { rate: 0.25 }) },
+	// 				{ label: "0.5x", click: () => sendAction("setPlaybackRate", { rate: 0.5 }) },
+	// 				{ label: "0.75x", click: () => sendAction("setPlaybackRate", { rate: 0.75 }) },
+	// 				{ label: "1x (Normal)", click: () => sendAction("setPlaybackRate", { rate: 1 }) },
+	// 				{ label: "1.25x", click: () => sendAction("setPlaybackRate", { rate: 1.25 }) },
+	// 				{ label: "1.5x", click: () => sendAction("setPlaybackRate", { rate: 1.5 }) },
+	// 				{ label: "2x", click: () => sendAction("setPlaybackRate", { rate: 2 }) }
+	// 			]
+	// 		},
+	// 		{ type: "separator" },
+	// 		{ label: "Seek Backward 10s", click: () => sendAction("seekBackward", { seconds: 10 }) },
+	// 		{ label: "Seek Forward 10s", click: () => sendAction("seekForward", { seconds: 10 }) },
+	// 		{ label: "Seek Backward 30s", click: () => sendAction("seekBackward", { seconds: 30 }) },
+	// 		{ label: "Seek Forward 30s", click: () => sendAction("seekForward", { seconds: 30 }) },
+	// 		{ type: "separator" }
+	// 	);
+	// }
 
 	// ─────────────────────────────────────────────
 	// EDITABLE FIELDS
@@ -849,7 +849,8 @@ async function createWindow(profile = 'Default') {
 		minHeight: 300,
 		frame: isMac,
 		titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
-		trafficLightPosition: isMac ? { x: 12, y: 12 } : undefined,
+		trafficLightPosition: isMac ? { x: 13, y: 18 } : undefined,
+		// transparent: true, (soon)
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
 			icon: path.join(__dirname, 'pages/profilePages/images/Copilot_20251122_223052.png'),
@@ -1335,8 +1336,11 @@ app.on('activate', () => {
 });
 
 ipcMain.handle('toggle-fullscreen', () => {
-	const isFull = win.isFullScreen();
-	win.setFullScreen(!isFull);
+	const focusedWin = BrowserWindow.getFocusedWindow();
+	if (!focusedWin || focusedWin.isDestroyed()) return false;
+	const isFull = focusedWin.isFullScreen();
+	focusedWin.setFullScreen(!isFull);
+	return !isFull;
 });
 
 app.on('window-all-closed', () => {

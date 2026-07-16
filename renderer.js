@@ -2,6 +2,7 @@
 // 2026 Bryant Sandoval
 // DISCLAIMER: This app or project was mostly made with AI, combined with features that were checked and created by me
 
+// --- App bootstrap and constants ---
 if (!navigator.userAgent.includes("BluebirdBrowser")) {
 	let a = document.createElement('a');
 	a.href = "pages/new-tab/index.html"
@@ -28,7 +29,7 @@ const PERMISSION_MAP = {
 	'persistent-storage': { label: 'Persistent Storage', icon: '💾', desc: 'Allows the site to store data that persists across sessions.' }
 };
 
-// Cache
+// --- Runtime state and caches ---
 const MAX_RECENT_CACHE = 50;
 window.cachedHistoryRecent = [];
 
@@ -61,15 +62,18 @@ async function setZoomSetting() {
 
 }
 
-window.api.getAppVersion().then(version => {
-	appVersion = version
+if (window.api?.getAppVersion) {
+	window.api.getAppVersion().then(version => {
+		appVersion = version
+		if (localStorage.getItem('appVer') !== version) {
+			localStorage.setItem('appVer', version);
+		}
+	}).catch(err => console.warn('Failed to get app version:', err));
+} else {
+	console.warn('window.api.getAppVersion not available');
+}
 
-	if (localStorage.getItem('appVer') !== version) {
-		localStorage.setItem('appVer', version);
-	}
-});
-
-// IndexedDB
+// --- Persistence and IndexedDB helpers ---
 function openDB() {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.open('BrowserProfilesDB', 6);
@@ -114,6 +118,7 @@ function openDB() {
 	});
 }
 
+// --- Update UI helpers ---
 function showUpdateButton(label) {
 	const btn = document.createElement("button");
 	btn.textContent = label;
@@ -124,6 +129,12 @@ function showUpdateButton(label) {
 	document.body.appendChild(btn);
 }
 
+function parseCommaSeparatedUrls(value = '') {
+	return String(value)
+		.split(',')
+		.map(item => item.trim())
+		.filter(Boolean);
+}
 
 // Helpers for IDB
 function promisifyRequest(req) {
@@ -141,16 +152,16 @@ function transactionDone(tx) {
 	});
 }
 
+// --- Window and profile bootstrap ---
 const isMac = navigator.platform.toLowerCase().includes('mac');
-let activeProfile = 'Default';
+let activeProfile = null;
 
-// Initial per-profile bounds application
-(async () => {
-	console.log(activeProfile)
-	if (!localStorage.getItem('pinnedTabs')) {
-		localStorage.setItem('pinnedTabs', ' ')
-	}
+// Initial per-profile bounds application (deferred until functions are defined)
+window.initializeWindowBounds = async function () {
 	try {
+		if (!localStorage.getItem('pinnedTabs')) {
+			localStorage.setItem('pinnedTabs', ' ')
+		}
 		const bounds = await loadWindowBoundsForProfile(activeProfile || 'Default');
 		if (bounds && window.electronAPI?.setWindowBounds) {
 			const safeBounds = {
@@ -164,7 +175,7 @@ let activeProfile = 'Default';
 	} catch (err) {
 		console.warn('Failed to load window bounds for profile:', err);
 	}
-})();
+};
 
 window.electronAPI.onFullscreenChanged(({ fullscreen }) => {
 	if (!fullscreen && isMac) {
@@ -177,9 +188,11 @@ window.electronAPI.onFullscreenChanged(({ fullscreen }) => {
 		displayNotification(`Press ${isMac ?
 			'<key><i class="material-symbols-rounded">keyboard_command_key</i></key> + <key><i class="material-symbols-rounded">keyboard_option_key</i></key> + <key>F</key>' :
 			'<key>Ctrl</key> + <key>Alt</key> + <key>F</key>'}  to exit full screen.`, 'aspect_ratio')
-		localStorage.setItem('fullscreen', String(true))
+		localStorage.setItem('fullscreen', String(true));
+		document.body.classList.add('fullscreen');
 	} else {
-		localStorage.setItem('fullscreen', String(false))
+		localStorage.setItem('fullscreen', String(false));
+		document.body.classList.remove('fullscreen');
 	}
 })
 
@@ -379,10 +392,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 		allSettings.find(s => s.key === 'setToOpenTabs')?.value || '';
 
 	// Parse comma-separated URLs
-	const setTabsList = setTabsRaw
-		.split(',')
-		.map(u => u.trim())
-		.filter(u => u.length > 0);
+	const setTabsList = parseCommaSeparatedUrls(setTabsRaw);
 
 	// --- 2. Read saved tabs BEFORE clearing ---
 	const db = await openDB();
@@ -393,24 +403,30 @@ document.addEventListener('DOMContentLoaded', async function () {
 	const savedTabs = await idbRequest(store.getAll());
 	await transactionDone(tx);
 
-	// --- 3. Handle startup behavior ---
-	setTimeout(function () {
-
-		if (startupMode === 'Restore Tabs' && savedTabs.length > 0) {
-			for (const t of savedTabs) {
-				createTab(t.url);
-			}
-		} else if (startupMode === 'Open A Set List of Tabs') {
-			if (setTabsList.length > 0) {
-				setTabsList.forEach(url => createTab(url));
+	// --- 3. Handle startup behavior (deferred until createTab is available) ---
+	window.initializeTabs = function () {
+		try {
+			if (startupMode === 'Restore Tabs' && savedTabs.length > 0) {
+				for (const t of savedTabs) {
+					if (t && t.url) createTab(t.url);
+				}
+			} else if (startupMode === 'Open A Set List of Tabs') {
+				if (setTabsList.length > 0) {
+					setTabsList.forEach(url => {
+						if (url) createTab(url);
+					});
+				} else {
+					createTab(homepage);
+				}
 			} else {
+				// Default: Open New Tab
 				createTab(homepage);
 			}
-		} else {
-			// Default: Open New Tab
-			createTab(homepage);
+		} catch (err) {
+			console.error('Failed to initialize tabs:', err);
+			createTab(homepage).catch(e => console.error('Failed to create homepage tab:', e));
 		}
-	}, 200)
+	};
 
 	// --- 4. Clear old session AFTER restoring ---
 	tx = db.transaction('tabs', 'readwrite');
@@ -419,75 +435,110 @@ document.addEventListener('DOMContentLoaded', async function () {
 	await transactionDone(tx);
 
 	// --- 5. UI setup ---
-	document.querySelector('title').innerHTML =
-		`${activeProfile} - Bluebird Browser`;
+	const titleEl = document.querySelector('title');
+	if (titleEl) {
+		titleEl.textContent = `${activeProfile} - Bluebird Browser`;
+	}
 
 	if (isMac) {
-		const topPart = document.getElementById('top-part');
+		const topPart = document.getElementById('tab-bar');
 		if (topPart) topPart.classList.add('on-mac');
 		document.body.classList.add('on-mac');
 	}
 
 	// --- 6. Restore window size ---
-	const saved = localStorage.getItem('windowSize');
-	if (saved) {
-		const { width, height } = JSON.parse(saved);
-		if (window.electronAPI?.resizeWindow) {
-			window.electronAPI.resizeWindow(width || 1200, height || 500);
+	try {
+		const saved = localStorage.getItem('windowSize');
+		if (saved) {
+			const { width, height } = JSON.parse(saved);
+			if (window.electronAPI?.resizeWindow) {
+				window.electronAPI.resizeWindow(Math.max(400, width || 1200), Math.max(300, height || 500));
+			}
+			if (window.electronAPI?.saveWindowBounds) {
+				window.electronAPI.saveWindowBounds();
+			}
 		}
-		if (window.electronAPI?.saveWindowBounds) {
-			window.electronAPI.saveWindowBounds();
-		}
+	} catch (err) {
+		console.warn('Failed to restore window size:', err);
 	}
 
 	// --- 7. Load browser settings (themes, toggles, etc.) ---
-	loadBrowserSettings();
+	if (typeof loadBrowserSettings === 'function') {
+		loadBrowserSettings().catch(err => console.error('Failed to load browser settings:', err));
+	}
 
-	const bookmarks = getBookmarks(activeProfile)
+	const bookmarks = typeof getBookmarks === 'function' ? getBookmarks(activeProfile) : [];
 
-	bookmarks.forEach(i => {
-		const newE = document.createElement('button');
+	if (!Array.isArray(bookmarks)) {
+		console.warn('getBookmarks returned non-array:', bookmarks);
+	}
 
-		newE.innerHTML = `
-			${i.favicon ? `<img src="${i.favicon}" alt="icon">` : `<i class="material-symbols-rounded">globe</i>`}
-			<span>${i.title}</span>
-		`;
+	const bookmarkBar = document.getElementById('bookmarks-bar');
+	if (bookmarkBar) {
+		bookmarks.forEach(i => {
+			if (!i || !i.url || !i.title) return;
 
-		newE.title = `${i.title} / ${i.url}`;
-		document.getElementById('bookmarks-bar').appendChild(newE);
+			const newE = document.createElement('button');
+			newE.innerHTML = `
+				${i.favicon ? `<img src="${i.favicon}" alt="icon">` : `<i class="material-symbols-rounded">globe</i>`}
+				<span>${i.title}</span>
+			`;
+			newE.title = `${i.title} / ${i.url}`;
+			bookmarkBar.appendChild(newE);
 
-		let clickTimer = null;
-		const delay = 300;
+			let clickTimer = null;
+			const delay = 300;
 
-		newE.addEventListener("click", () => {
-			if (clickTimer) {
-				clearTimeout(clickTimer);
-				clickTimer = null;
-
-				createContextMenu(
-					[
-						{
-							icType: 'GF',
-							icon: 'edit',
-							name: 'Edit Bookmark',
-							category: 'Manage'
-						}
-					],
-					newE
-				);
-
-			} else {
-				clickTimer = setTimeout(() => {
+			newE.addEventListener("click", () => {
+				if (clickTimer) {
+					clearTimeout(clickTimer);
 					clickTimer = null;
 
-					createTab(i.url, i.title, i.favicon);
+					createContextMenu(
+						[
+							{
+								icType: 'GF',
+								icon: 'edit',
+								name: 'Edit Bookmark',
+								category: 'Manage'
+							}
+						],
+						newE
+					);
 
-				}, delay);
-			}
+				} else {
+					clickTimer = setTimeout(() => {
+						clickTimer = null;
+
+						createTab(i.url, i.title, i.favicon);
+
+					}, delay);
+				}
+			});
 		});
-	});
+	}
 
-	localStorage.setItem('currentProfile', activeProfile)
+	localStorage.setItem('currentProfile', activeProfile);
+
+	// Now initialize deferred startup functions
+	if (typeof window.initializeWindowBounds === 'function') {
+		window.initializeWindowBounds().catch(err => console.error('Window bounds init failed:', err));
+	}
+	if (typeof window.initializeTabs === 'function') {
+		window.initializeTabs();
+	}
+
+	document.getElementById('new-tab').onclick = () => {
+		createTab(homepage)
+	}
+
+	document.getElementById('new-tab').oncontextmenu = (e) => {
+		createContextMenu([
+			{ icon: 'add', icType: 'GF', name: 'New Tab', category: 'Add Tab', function: () => createTab(homepage) },
+			{ icon: 'encrypted_add_circle', icType: 'GF', name: 'New Private Tab', category: 'Add Tab', function: () => openPrivateTab('pages/new-tab/index.html') },
+			{ icon: 'swap_horiz', icType: 'GF', name: 'Open New Tab Page on this Tab', category: 'Replace Tab', function: () => { closeTab(getActive().id); createTab(homepage, { insertAfterActive: true }) } },
+		])
+	}
 });
 
 function debounce(fn, delay = 150) {
@@ -504,10 +555,10 @@ if (profileInfoEl) {
     <i class="material-symbols-rounded">account_circle</i>
     <span id="active-profile-displayed">${activeProfile}</span>
   `;
-}
 
-// Profile switcher menu (uses electronAPI for windows)
-if (profileInfoEl) {
+	let activeProfIcon;
+
+	// Profile switcher menu (uses electronAPI for windows)
 	profileInfoEl.addEventListener('click', async function () {
 		// Use JSON-based profiles for consistency across windows
 		let profiles = [];
@@ -526,6 +577,8 @@ if (profileInfoEl) {
 					type: "image",
 					value: p.avatar
 				};
+
+				activeProfIcon = icon;
 			} else {
 				// SAFE MONOGRAPH (1 character)
 				const letter = (p.avatar || p.name || "?").trim()[0]?.toUpperCase() || "?";
@@ -533,7 +586,10 @@ if (profileInfoEl) {
 					type: "letter",
 					value: letter
 				};
+				activeProfIcon = icon;
 			}
+
+			console.log(activeProfIcon)
 
 			return {
 				icon: icon.type == 'image' ? `<img src="${p.avatar}">` : p.avatar,
@@ -548,7 +604,35 @@ if (profileInfoEl) {
 					window.electronAPI?.newWindow?.(p.name, 'new-window');
 				}
 			};
-		});
+		}).filter(item => item !== null);
+
+		let activeProfileInfo = profiles.find(p => p.name === activeProfile);
+		console.log(activeProfileInfo)
+
+		// Insert Before
+		items.unshift(
+			{
+				innerHtml: `
+					<div class="over-nav">
+						Bluebird Account
+					</div>
+				`,
+				category: 'Account'
+			},
+			{
+				innerHtml: `
+					<div class="overview-acc-cont">
+						<div>
+							${activeProfIcon.type === 'image'
+						? `<img src="${profiles.find(p => p.name === activeProfile.name)?.avatar}" />`
+						: profiles.find(p => p.name === activeProfile.name)?.avatar
+					}
+							<h3>Hi there ${activeProfile}!</h3>
+						</div>
+					</div>
+				`,
+				category: 'Account'
+			})
 
 		items.push(
 			{
@@ -586,32 +670,31 @@ if (profileInfoEl) {
 						function: () => { window.electronAPI?.openAppPage?.('https://github.com/login', 900, 700, activeProfile, true, [{ resizable: true, }]); }
 					},
 				]
+			},
+			{
+				icon: '⚙',
+				name: 'Profile Manager',
+				category: 'Manage',
+				function: () => {
+					window.electronAPI?.openAppPage?.(
+						'pages/profilePages/profileManager.html',
+						800,
+						800,
+						'Default'
+					);
+				}
+			},
+			{
+				icon: 'brush',
+				icType: 'GF',
+				name: 'Customize Theme',
+				category: 'Manage',
+				function: () => {
+					openSidebarApp('pages/settings/index.html#appearance', 'Settings', true);
+				}
 			}
-		)
+		);
 
-		items.push({
-			icon: '⚙',
-			name: 'Profile Manager',
-			category: 'Manage',
-			function: () => {
-				window.electronAPI?.openAppPage?.(
-					'pages/profilePages/profileManager.html',
-					800,
-					800,
-					'Default'
-				);
-			}
-		});
-
-		items.push({
-			icon: 'brush',
-			icType: 'GF',
-			name: 'Customize Theme',
-			category: 'Manage',
-			function: () => {
-				openSidebarApp('pages/settings/index.html#appearance', 'Settings', true);
-			}
-		});
 		createContextMenu(items, profileInfoEl);
 	});
 }
@@ -974,8 +1057,16 @@ async function loadBrowserSettings() {
 		document.documentElement.style.setProperty(`--${key}`, value);
 	});
 
-	// System Theme
-	document.body.style.colorScheme = settings.systemTheme;
+	const resolvedTheme = settings.systemTheme || 'light dark';
+	document.body.style.colorScheme = resolvedTheme;
+	document.documentElement.style.colorScheme = resolvedTheme;
+	if (resolvedTheme.includes('dark')) {
+		document.documentElement.classList.add('theme-dark');
+		document.documentElement.classList.remove('theme-light');
+	} else {
+		document.documentElement.classList.add('theme-light');
+		document.documentElement.classList.remove('theme-dark');
+	}
 
 	// Bookmark Bar
 	const bkMB = document.getElementById("bookmarks-bar");
@@ -1022,8 +1113,11 @@ async function loadBrowserSettings() {
 	// Hardware Acceleration
 	const hardwareAccel = await loadSetting('hardwareAcceleration');
 	if (hardwareAccel) {
-		document.documentElement.style.perspective = 'none'; // Enable GPU acceleration
-		document.documentElement.style.transform = 'translate3d(0,0,0)';
+		document.documentElement.style.perspective = 'none';
+		document.documentElement.style.transform = 'translateZ(0)';
+		document.documentElement.style.willChange = 'transform';
+	} else {
+		document.documentElement.style.willChange = 'auto';
 	}
 
 	// Background Tab Throttling
@@ -1466,9 +1560,16 @@ function sendDownloadListToSidebar() {
 	updateDownloadManager();
 }
 
+let profiles = [];
+
 window.electronAPI?.onSwitchProfile?.(async (profileName) => {
-	console.log('Switched to profile:', profileName);
-	activeProfile = profileName;
+	if (window.api?.profiles?.list) {
+		profiles = await window.api.profiles.list();
+	} else {
+		profiles = await listProfiles();
+	}
+
+	activeProfile = profiles.find(acc => acc.name === profileName).name;
 
 	if (!localStorage.getItem(`firstTime-${activeProfile}`)) {
 		localStorage.setItem(`firstTime-${activeProfile}`, String(true));
@@ -1529,6 +1630,9 @@ window.electronAPI?.onSwitchProfile?.(async (profileName) => {
 });
 
 // Elements
+const tabSmallBtn = document.getElementById('tab-btn');
+const tabSmallBtnMore = document.getElementById('tabs-more-btn');
+
 const tabsBar = document.getElementById('tabs');
 const views = document.getElementById('views');
 const address = document.getElementById('address');
@@ -1542,18 +1646,47 @@ const reloadBtn = document.getElementById('reload');
 const bookmarkBtn = document.getElementById('bookmark');
 const newWindowBtn = document.getElementById('new-window');
 
-const zoomBtn = document.getElementById('zoomBtn')
-const searchModeBtn = document.getElementById('searchModeOpt')
-const bookmarkManagerBtn = document.getElementById('bookmark-manager')
-const historyManager = document.getElementById('btnHistory')
-const btnSettings = document.getElementById('btnSettings')
-const btnPrint = document.getElementById('btnPrint')
-const btnDownload = document.getElementById('btnDownloads')
-const btnShare = document.getElementById('btnShare')
-const btnDevTools = document.getElementById('btnDevTools')
-const btnDownloadManager = document.getElementById('btnDownloadManager')
-const btnPrivacy = document.getElementById('btnPrivacy')
-const updateBtn = document.getElementById('update-btn')
+const zoomBtn = document.getElementById('zoomBtn');
+const searchModeBtn = document.getElementById('searchModeOpt');
+const bookmarkManagerBtn = document.getElementById('bookmark-manager');
+const historyManager = document.getElementById('btnHistory');
+const btnSettings = document.getElementById('btnSettings');
+const btnPrint = document.getElementById('btnPrint');
+const btnDownload = document.getElementById('btnDownloads');
+const btnShare = document.getElementById('btnShare');
+const btnDevTools = document.getElementById('btnDevTools');
+const btnDownloadManager = document.getElementById('btnDownloadManager');
+const btnPrivacy = document.getElementById('btnPrivacy');
+const updateBtn = document.getElementById('update-btn');
+
+tabSmallBtn.onclick = () => {
+	const items = tabs.map(tab => ({
+		innerHtml: `${tab.favicon
+			? `<img src="${tab.favicon}">`
+			: `<i class="material-symbols-rounded">globe</i>`}
+            <span>${tab.title}</span>`,
+		category: 'Tabs',
+		function: () => setActiveTab(tab.id)
+	}));
+
+	console.log(items);
+	createContextMenu(items, tabSmallBtn);
+};
+
+tabSmallBtnMore.onclick = () => {
+	let activeTab = getActive();
+
+	const items = [
+		{ name: 'Close Tab', category: 'Close Tab', icType: 'GF', icon: 'close', function: () => { closeTab(activeTab.id) } },
+		{ name: 'Close Other Tabs', category: 'Close Tab', icType: 'GF', icon: 'filter_none', function: () => { closeOtherTabs(activeTab.id) } },
+		{ name: 'Close Tabs to the Right', category: 'Close Tab', icType: 'GF', icon: 'subdirectory_arrow_right', function: () => { closeTabsToRight(activeTab.id) } },
+		{ name: 'Move Tab to Begining', category: 'Tab Order', icType: 'GF', icon: 'arrow_up', function: () => { moveTabToStart(activeTab) } },
+		{ name: 'Move Tab to End', category: 'Tab Order', icType: 'GF', icon: 'arrow_down', function: () => { moveTabToEnd(activeTab) } },
+		{ icon: 'push_pin', icType: 'GF', name: 'Pin Tab', disabled: activeTab.isPinned, function: () => { activeTab.pinned = true; activeTab.tabElement.classList.add('pinned'); } },
+		{ icon: 'push_pin', icType: 'GF', name: 'Unpin Tab', disabled: !activeTab.isPinned, function: () => { activeTab.pinned = false; activeTab.tabElement.classList.remove('pinned'); } },
+	];
+	createContextMenu(items, tabSmallBtnMore);
+}
 
 // Global drag state for tab reordering
 const dragState = {
@@ -1604,7 +1737,7 @@ document.addEventListener('mousemove', (e) => {
 	// Update visual positions if drop position changed
 	if (newDropIndex !== dragState.currentDropIndex) {
 		dragState.currentDropIndex = newDropIndex;
-		updateTabPositionsPreview(dragState.dragStartIndex, newDropIndex);
+		requestAnimationFrame(() => updateTabPositionsPreview(dragState.dragStartIndex, newDropIndex));
 	}
 });
 
@@ -1626,14 +1759,14 @@ document.addEventListener('mouseup', (e) => {
 		tabs.splice(finalDropIndex, 0, draggedTab);
 	}
 
-	// Reset all tab transforms with animation
-	dragState.draggedEl.style.transition = 'transform 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)';
+	// Reset all tab transforms with a short, low-cost transition
+	dragState.draggedEl.style.transition = 'transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1)';
 	dragState.draggedEl.style.transform = '';
 	dragState.draggedEl.style.zIndex = '';
 	dragState.draggedEl.classList.remove('dragging-tab');
 
 	tabsBar.querySelectorAll('.tab:not(.new-tab)').forEach(tabNode => {
-		tabNode.style.transition = 'transform 0.3s cubic-bezier(0.075, 0.82, 0.165, 1)';
+		tabNode.style.transition = 'transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1)';
 		tabNode.style.transform = '';
 	});
 
@@ -1643,9 +1776,6 @@ document.addEventListener('mouseup', (e) => {
 			// Recreate tab elements in new order
 			tabsBar.querySelectorAll('.tab:not(.new-tab)').forEach(node => node.remove());
 			tabs.forEach((t) => { addTabElement(t); });
-
-			const newTabBtn = tabsBar.querySelector('.new-tab');
-			if (newTabBtn) tabsBar.appendChild(newTabBtn);
 		}
 
 		if (activeTab) setActiveTab(activeTab);
@@ -1698,7 +1828,9 @@ setTimeout(function () {
 			setTimeout(() => updateNavButtons(active.webview), 150);
 		}
 	};
-	if (reloadBtn) reloadBtn.onclick = () => { getActive()?.webview.reload(); };
+	if (reloadBtn) reloadBtn.onclick = () => {
+		getActive()?.webview.reload(); if (getActive().url.includes('pages/new-tab/index.html')) { address.value = '' }
+	};
 	if (bookmarkBtn) bookmarkBtn.onclick = () => { addBookmark() };
 	if (newWindowBtn) newWindowBtn.onclick = () => { const profile = activeProfile || 'Default'; if (window.electronAPI?.newWindow) { window.electronAPI.newWindow(profile, 'new-window'); } else if (window.api?.window?.new) { window.api.window.new(profile, 'new-window'); } else { console.warn('No window.new API exposed'); } };
 	if (zoomBtn) { zoomBtn.onclick = async () => { const active = getActive(); if (active?.webview) { await showZoomControls(active.webview, active.webview.getZoomFactor()); } } }
@@ -2021,7 +2153,7 @@ document.getElementById('viewWebsiteInfo').addEventListener('click', async funct
 });
 
 
-document.getElementById('top-part').addEventListener('contextmenu', (e) => {
+document.getElementById('tab-bar').addEventListener('contextmenu', (e) => {
 	e.preventDefault();
 
 	const tabEl = e.target.closest('.tab');
@@ -2066,7 +2198,7 @@ document.getElementById('top-part').addEventListener('contextmenu', (e) => {
 			// { icon: 'restore_page', icType: 'GF', name: 'Reopen Closed Tab', function: reopenClosedTab }
 		];
 
-		createContextMenu(items, tabEl, clickX, clickY);
+		createContextMenu(items, null, clickX, clickY);
 		return;
 	}
 
@@ -2333,10 +2465,11 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 	firstCont.style.gap = '4px';
 	firstCont.style.alignItems = 'center';
 
-	const audIcon = document.createElement('i')
-	audIcon.classList.add('material-symbols-rounded', 'audio-icon-tab')
-	audIcon.innerHTML = `play_circle`
-	firstCont.appendChild(audIcon)
+	const audIcon = document.createElement('i');
+	audIcon.classList.add('material-symbols-rounded', 'audio-icon-tab');
+	audIcon.style.marginRight = '8px';
+	audIcon.innerHTML = `play_circle`;
+	firstCont.appendChild(audIcon);
 
 	// favicon placeholder
 	const fav = document.createElement('img');
@@ -2371,8 +2504,10 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 
 	// close button
 	const closeBtn = document.createElement('button');
-	closeBtn.textContent = '✕';
+	closeBtn.classList.add('close-tab-btn', 'material-symbols-rounded')
+	closeBtn.textContent = 'close';
 	closeBtn.style.marginLeft = '8px';
+	closeBtn.draggable = 'false';
 	closeBtn.onclick = (e) => {
 		e.stopPropagation();
 		closeTab(tab.id);
@@ -2391,8 +2526,10 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 
 	el.addEventListener('mousedown', (e) => {
 		if (e.button !== 0 || tab.pinned) return; // Only left mouse button, skip pinned tabs
+		if (!e.target === closeBtn) {
+			setActiveTab(tab.id);
+		}
 
-		setActiveTab(tab.id);
 
 		// Initiate drag with this tab
 		dragState.isDragging = true;
@@ -2412,12 +2549,6 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 		});
 	});
 
-	// --- insertion logic ---
-	const newTabBtn = tabsBar.querySelector('.new-tab');
-
-	newTabBtn.onclick = () => {
-		createTab('pages/new-tab/index.html')
-	}
 	let referenceEl = null;
 
 	if (typeof index === 'number') {
@@ -2430,8 +2561,6 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 
 	if (referenceEl) {
 		tabsBar.insertBefore(el, referenceEl);
-	} else if (newTabBtn) {
-		tabsBar.insertBefore(el, newTabBtn);
 	} else {
 		tabsBar.appendChild(el);
 	}
@@ -2453,7 +2582,7 @@ async function addTabElement(tab, index = undefined, playAnimation = false) {
 			el.style.maxWidth = '';
 			setTimeout(() => {
 				el.classList.remove('open-animation');
-			}, 400)
+			}, 180)
 		});
 	}
 
@@ -2495,10 +2624,9 @@ async function removeTabElement(id) {
 		el.style.maxWidth = '0px';
 		el.style.minWidth = '0px';
 
-		// Remove after animation ends
 		setTimeout(() => {
 			el.remove();
-		}, 400);
+		}, 180);
 	});
 
 	// Remove from DB
@@ -2656,7 +2784,7 @@ window.electronAPI.onNewTab((payload) => {
 });
 
 
-function createTab(url, opts = {}) {
+async function createTab(url, opts = {}) {
 	const id = crypto.randomUUID();
 	const shortId = generateUniqueShortId('tab', 8);
 
@@ -2679,7 +2807,9 @@ function createTab(url, opts = {}) {
 	wv.setAttribute('allow', 'autoplay; picture-in-picture; microphone; camera; geolocation; midi; encrypted-media; display-capture; fullscreen; clipboard-read; clipboard-write');
 	wv.setAttribute('webpreferences', 'contextIsolation=yes, nativeWindowOpen=yes');
 
-	// Partition
+	while (!activeProfile) {
+		await new Promise(r => setTimeout(r, 10)); // wait 10ms
+	}
 	wv.setAttribute(
 		'partition',
 		isPrivateTab ? `temp:private-${shortId}` : `persist:${activeProfile}`
@@ -2814,7 +2944,6 @@ function createTab(url, opts = {}) {
 	wv.addEventListener('did-start-loading', startLoadingHandler);
 	tab.listeners.push({ event: 'did-start-loading', handler: startLoadingHandler });
 
-	// DID STOP LOADING
 	const stopLoadingHandler = () => {
 		const active = getActive();
 		if (active) showTabLeftInfo(active);
@@ -2830,9 +2959,10 @@ function createTab(url, opts = {}) {
 		};
 
 		setTimeout(() => {
-			addHistoryEntry(activeProfile || 'Default', entry);
+			tab.currentHistoryEntry = addHistoryEntry(activeProfile || 'Default', entry);
 		}, 1000);
 	};
+
 	wv.addEventListener('did-stop-loading', stopLoadingHandler);
 	tab.listeners.push({ event: 'did-stop-loading', handler: stopLoadingHandler });
 
@@ -2956,7 +3086,6 @@ function createTab(url, opts = {}) {
 	return tab;
 }
 
-
 window.confirm = () => {
 	console.log('Confirm')
 }
@@ -3042,24 +3171,6 @@ async function addHistoryEntry(profile, { url, title, favicon }) {
 	await transactionDone(tx);
 }
 
-function getTabInfo(identifier) {
-	if (!identifier) return null;
-
-	let tab = tabs.find(t => t.id === identifier) || tabs.find(t => t.shortId === identifier);
-
-	if (!tab) return null;
-
-	return {
-		id: tab.id,
-		shortId: tab.shortId,
-		url: tab.url,
-		title: tab.title,
-		favicon: tab.favicon,
-		audio: tab.audio,
-		screenshot: tab.screenshot
-	};
-}
-
 async function closeTab(tabId) {
 	// Normalize tabId
 	if (tabId && typeof tabId !== "string") {
@@ -3092,6 +3203,10 @@ async function closeTab(tabId) {
 				if (done) return;
 				done = true;
 
+				if (tabs.length - 1 === 0) {
+					window.close();
+				}
+
 				if (newActiveTabId) {
 					setActiveTab(newActiveTabId);
 				} else {
@@ -3102,7 +3217,7 @@ async function closeTab(tabId) {
 			};
 
 			tabEl.addEventListener("transitionend", finish, { once: true });
-			setTimeout(finish, 250);
+			setTimeout(finish, 180);
 		});
 	}
 
@@ -3134,10 +3249,6 @@ async function closeTab(tabId) {
 	delete tabHistory[shortId];
 	tabs.splice(closingIndex, 1); // faster than filter
 	tabEl?.remove();
-
-	if (tabs.length === 0) {
-		window.close();
-	}
 }
 
 function setActiveTab(id) {
@@ -3183,6 +3294,9 @@ window.reloadActiveWebview = function () {
 	const active = getActive();
 	if (active?.webview?.reload) {
 		active.webview.reload();
+		if (tab.url.includes('pages/new-tab/index.html')) {
+			address.value = ''
+		}
 	}
 };
 
@@ -3572,6 +3686,8 @@ const activeMenuKeydownHandlers = new Set();
 
 // Helper globals and cleanup function (added to fix bugs and ensure safe cleanup)
 if (!window.activeMenuKeydownHandlers) window.activeMenuKeydownHandlers = new Set();
+// Track resize/scroll handlers so we can clean them up when menus are removed
+if (!window.activeMenuResizeHandlers) window.activeMenuResizeHandlers = new Set();
 
 function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, passThru = {}) {
 	removeContextMenus();
@@ -3614,6 +3730,9 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 		}
 
 		// Start hidden to measure size and avoid flicker
+		contextMenu.style.visibility = 'hidden';
+		contextMenu.style.opacity = '0';
+		contextMenu.style.pointerEvents = 'none';
 
 		// Build items first so menu has size when we measure
 		const buildItems = (list, parent) => {
@@ -3625,7 +3744,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					currentCategory = category;
 					const catDiv = document.createElement('div');
 					catDiv.classList.add('context-menu-category');
-					catDiv.innerHTML = `<span>${category}</span>`;
+					catDiv.textContent = category;
 					parent.appendChild(catDiv);
 				}
 
@@ -3666,6 +3785,10 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					subMenu.classList.add('context-submenu');
 					subMenu.style.position = 'absolute';
 					subMenu.style.zIndex = '1001';
+					subMenu.style.backdropFilter = 'blur(20px)';
+					subMenu.style.opacity = '0';
+					subMenu.style.pointerEvents = 'none';
+					subMenu.style.transition = 'opacity 120ms ease';
 					document.body.appendChild(subMenu);
 
 					// Build submenu items into the submenu element
@@ -3680,7 +3803,7 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 
 						// Default: place to the right of the item
 						let subLeft = itemRect.right + window.scrollX;
-						let subTop = itemRect.top + window.scrollY;
+						let subTop = itemRect.top + window.scrollY - 20;
 
 						// If it would overflow right, place to the left of the item
 						if (subLeft + subRect.width > vw) {
@@ -3734,7 +3857,6 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 					subMenu.addEventListener('mouseleave', () => {
 						subMenu.style.opacity = '0';
 						subMenu.style.pointerEvents = 'none';
-						subMenu.style.animationDirection = 'reverse';
 					});
 
 				} else {
@@ -3783,17 +3905,59 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 			const vw = window.innerWidth;
 			const vh = window.innerHeight;
 
-			let originX = "left";
-			let originY = "top";
+			// If elementClicked was provided, prefer positioning relative to it (already set top/left above)
+			// Adjust to keep within viewport
+			if (left + menuRect.width > vw) left = Math.max(0, vw - menuRect.width);
+			if (top + menuRect.height > vh) top = Math.max(0, vh - menuRect.height);
 
-			if (left + menuRect.width > vw) { left = Math.max(0, vw - menuRect.width); originX = "right" }
-			if (top + menuRect.height > vh) { top = Math.max(0, vh - menuRect.height); originY = "bottom" }
-
-			contextMenu.style.transformOrigin = `${originX} ${originY}`;
 			contextMenu.style.top = `${Math.max(0, top)}px`;
 			contextMenu.style.left = `${Math.max(0, left)}px`;
+			contextMenu.style.visibility = 'visible';
+			contextMenu.style.opacity = '1';
+			contextMenu.style.pointerEvents = 'auto';
 			contextMenu.classList.add('open');
 		});
+
+		// Keep a stable reference to initial coords / element for repositioning
+		const _menuRef = { contextMenu, elementClicked, initialLeft: left, initialTop: top };
+
+		// Reposition helper: keeps menu aligned to the clicked element or fallback coords
+		const repositionMenu = () => {
+			if (!_menuRef.contextMenu || !_menuRef.contextMenu.isConnected) return;
+			let newTop = _menuRef.initialTop;
+			let newLeft = _menuRef.initialLeft;
+			if (_menuRef.elementClicked) {
+				const rect = _menuRef.elementClicked.getBoundingClientRect();
+				newTop = rect.bottom + window.scrollY;
+				newLeft = rect.left + window.scrollX;
+			}
+
+			const mRect = _menuRef.contextMenu.getBoundingClientRect();
+			const vw = window.innerWidth;
+			const vh = window.innerHeight;
+
+			// If it would overflow right, place to the left or clamp
+			if (newLeft + mRect.width > vw) {
+				newLeft = Math.max(0, vw - mRect.width);
+			}
+			// If it would overflow bottom, shift up or clamp
+			if (newTop + mRect.height > vh) {
+				newTop = Math.max(0, vh - mRect.height);
+			}
+
+			_menuRef.contextMenu.style.left = `${Math.max(0, Math.round(newLeft))}px`;
+			_menuRef.contextMenu.style.top = `${Math.max(0, Math.round(newTop))}px`;
+		};
+
+		// Debounced handler for resize/scroll/orientation changes
+		const resizeHandler = debounce(() => {
+			repositionMenu();
+		}, 50);
+
+		window.addEventListener('resize', resizeHandler);
+		window.addEventListener('scroll', resizeHandler, { passive: true });
+		window.addEventListener('orientationchange', resizeHandler);
+		window.activeMenuResizeHandlers.add(resizeHandler);
 
 		// Global cleanup listeners
 		setTimeout(() => {
@@ -3803,44 +3967,45 @@ function createContextMenu(items = [], elementClicked = null, x = 0, y = 0, pass
 				try { webview.addEventListener('mousedown', removeContextMenus); } catch (e) { }
 			});
 		}, 0);
-		document.querySelector('.context-menu-item')?.focus();
-		return contextMenu;
+		document.querySelector('.context-item').focus();
 	}, 50);
 }
 
 function removeContextMenus() {
-	const menus = document.querySelectorAll('.context-menu, .context-submenu');
+	setTimeout(function () {
+		if (document.querySelector('.hover-force')) {
+			document.querySelector('.hover-force').classList.remove('hover-force');
+		}
+	})
 
-	menus.forEach(menu => {
-		// Force reflow so reverse animation always plays
-		menu.style.animation = 'none';
-		menu.offsetHeight; // reflow
-		menu.style.animation = '';
-		menu.style.animationDirection = 'reverse';
+	document.querySelectorAll('.context-menu').forEach(menu => menu.remove());
 
-		menu.addEventListener('animationend', () => {
-			menu.remove();
-		}, { once: true });
-	});
+	document.querySelectorAll('.context-submenu').forEach(menu => menu.remove());
 
-	// Remove hover-force safely
-	const hover = document.querySelector('.hover-force');
-	if (hover) hover.classList.remove('hover-force');
+	document.querySelectorAll('.context-menu-backdrop').forEach(backdrop => backdrop.remove());
 
-	// Remove backdrop immediately (or animate it too if you want)
-	document.querySelectorAll('.context-menu-backdrop').forEach(b => b.remove());
-
-	// Remove listeners
 	document.removeEventListener('click', removeContextMenus);
-	document.querySelectorAll('webview').forEach(w => {
-		w.removeEventListener('mousedown', removeContextMenus);
+
+	document.querySelectorAll('webview').forEach(webview => {
+		webview.removeEventListener('mousedown', removeContextMenus);
 	});
 
 	for (const fn of activeMenuKeydownHandlers) {
 		window.removeEventListener('keydown', fn);
 	}
 	activeMenuKeydownHandlers.clear();
+
+	// Remove any resize/scroll handlers that were attached for context menus
+	if (window.activeMenuResizeHandlers && window.activeMenuResizeHandlers.size) {
+		for (const fn of window.activeMenuResizeHandlers) {
+			window.removeEventListener('resize', fn);
+			window.removeEventListener('scroll', fn);
+			window.removeEventListener('orientationchange', fn);
+		}
+		window.activeMenuResizeHandlers.clear();
+	}
 }
+
 
 function getDisplayUrl(rawUrl = '') {
 	if (!rawUrl) return '';
@@ -4070,18 +4235,20 @@ function showTabInfo(title, url, favicon, elementHover, shortId) {
 				});
 			}
 		}
-	}, 400);
-
-	// Position popup
-	const rect = elementHover.getBoundingClientRect();
-	currentInfoBox.style.position = 'fixed';
-	currentInfoBox.style.top = `${rect.bottom + 5}px`;
-	currentInfoBox.style.left = `${rect.left}px`;
+	}, 600);
 
 	// Show popup
 	currentInfoBox.style.display = "block";
 	isShown = true;
-	setTimeout(() => currentInfoBox.classList.add('show'), 600);
+	setTimeout(() => currentInfoBox.classList.add('show'), 1400);
+
+	// Position popup
+	const rect = elementHover.getBoundingClientRect();
+	const centerX = rect.left + rect.width / 2;
+
+	currentInfoBox.style.position = 'fixed';
+	currentInfoBox.style.top = `${rect.bottom + 5}px`;
+	currentInfoBox.style.left = `${centerX - currentInfoBox.offsetWidth / 2}px`;
 
 	// Helper for notifications
 	const addTMessage = (message, icon) => {
@@ -4094,8 +4261,6 @@ function showTabInfo(title, url, favicon, elementHover, shortId) {
 	if (item?.audio) {
 		addTMessage('Media is playing from this tab', 'media_link');
 	}
-
-	console.log(item);
 }
 
 function hideTabInfo() {
@@ -4104,7 +4269,7 @@ function hideTabInfo() {
 		currentInfoBox.classList.remove('show');
 		setTimeout(() => {
 			currentInfoBox.style.display = "none";
-		}, 10);
+		}, 1400);
 	}
 	isShown = false;
 }
@@ -5100,7 +5265,7 @@ function startSearchMode(mode) {
 	address.onblur = () => {
 		address.placeholder = 'Search or enter URL address';
 		viewWebsiteInfo.innerHTML = `
-		<i class="material-symbols-rounded">web</i></button>
+		<i class="material-symbols-rounded">page_info</i></button>
 		`;
 		searchMode = null;
 		address.onblur = null;
@@ -5821,7 +5986,7 @@ function processQueue() {
 		setTimeout(() => {
 			isDisplaying = false;
 			processQueue();
-		}, 300);
+		}, 150);
 	}, timeout);
 }
 
